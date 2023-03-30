@@ -15,6 +15,11 @@ namespace AdvancedStatsAndEffects
     public class AdvancedStatsAndEffectsSession : BaseSessionComponent
     {
 
+        public static bool CheckChance(float chance)
+        {
+            return new Random().Next(1, 101) <= chance;
+        }
+
         public const ushort NETWORK_ID_COMMANDS = 41823;
         public const ushort NETWORK_ID_DEFINITIONS = 41824;
         public const string CALL_FOR_DEFS = "NEEDDEFS";
@@ -28,9 +33,52 @@ namespace AdvancedStatsAndEffects
                 InvokeAfterCoreApiLoaded.Add(action);
         }
 
-        public ConcurrentDictionary<string, MyEntityStatDefinition> BodyStatsConfigs = new ConcurrentDictionary<string, MyEntityStatDefinition>();
+        public ConcurrentDictionary<string, MyEntityStatDefinition> BodyStatsConfigs { get; set; } = new ConcurrentDictionary<string, MyEntityStatDefinition>();
+        public List<string> TriggerStats { get; set; } = new List<string>();
+        public ConcurrentDictionary<MyDefinitionId, AdvancedStatsAndEffectsAPIBackend.ConsumableInfo> ConsumablesInfo { get; set; } = new ConcurrentDictionary<MyDefinitionId, AdvancedStatsAndEffectsAPIBackend.ConsumableInfo>();
+        public ConcurrentDictionary<string, AdvancedStatsAndEffectsAPIBackend.FixedStatInfo> FixedStatsInfo { get; set; } = new ConcurrentDictionary<string, AdvancedStatsAndEffectsAPIBackend.FixedStatInfo>();
 
         public ExtendedSurvivalCoreAPI ESCoreAPI;
+
+        public AdvancedStatsAndEffectsAPIBackend.FixedStatInfo GetFixedStat(string id)
+        {
+            if (FixedStatsInfo.ContainsKey(id))
+                return FixedStatsInfo[id];
+            return null;
+        }
+
+        public void DoConfigureFixedStat(AdvancedStatsAndEffectsAPIBackend.FixedStatInfo fixedStatInfo)
+        {
+            if (!FixedStatsInfo.Keys.Contains(fixedStatInfo.Id))
+            {
+                if (!FixedStatsInfo.Values.Any(x => x.Group == fixedStatInfo.Group && x.Index == fixedStatInfo.Index))
+                {
+                    FixedStatsInfo[fixedStatInfo.Id] = fixedStatInfo;
+                    AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Registred Fixed Stat : {fixedStatInfo.Id}");
+                }
+                else
+                {
+                    AdvancedStatsAndEffectsLogging.Instance.LogWarning(GetType(), $"DoConfigureFixedStat : Group and Index already registred");
+                }
+            }
+            else
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogWarning(GetType(), $"DoConfigureFixedStat : Fixed Stat is already registred");
+            }
+        }
+
+        public void DoConfigureConsumable(AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo)
+        {
+            if (!ConsumablesInfo.Keys.Contains(consumableInfo.DefinitionId))
+            {
+                ConsumablesInfo[consumableInfo.DefinitionId] = consumableInfo;
+                AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Registred Consumable : {consumableInfo.DefinitionId}");                
+            }
+            else
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogWarning(GetType(), $"DoConfigureConsumable : Consumable is already registred");
+            }
+        }
 
         protected override void DoInit(MyObjectBuilder_SessionComponent sessionComponent)
         {
@@ -49,11 +97,16 @@ namespace AdvancedStatsAndEffects
                 MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(NETWORK_ID_DEFINITIONS, ClientDefinitionsUpdateServerMsgHandler);
 
                 var stats = MyDefinitionManager.Static.GetDefinitionsOfType<MyEntityStatDefinition>();
+                var playerCharacters = new string[] { "Default_Astronaut", "Default_Astronaut_Female" };
                 foreach (var stat in stats)
                 {
                     if (stat.DescriptionString == "#ASE#")
                     {
                         BodyStatsConfigs[stat.Name] = stat;
+                        foreach (var character in playerCharacters)
+                        {
+                            DefinitionUtils.AddStatToCharacter(stat.Name, character);
+                        }
                     }
                 }
 

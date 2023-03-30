@@ -1,6 +1,10 @@
 ﻿using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using VRage;
+using VRage.Game;
+using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 
 namespace AdvancedStatsAndEffects
@@ -222,6 +226,32 @@ namespace AdvancedStatsAndEffects
                 Stats[key].Value = Stats[key].DefaultValue;
                 BodyStats[key].CurrentValue = Stats[key].Value;
             }
+        }
+
+        private DateTime lastRegenEffect;
+        private void CheckConsumableHasSpecialAction()
+        {
+            if (lastRemovedIten != null)
+            {
+                var removedId = new MyDefinitionId(lastRemovedIten.Value.Key.Content.TypeId, lastRemovedIten.Value.Key.Content.SubtypeId);
+                if (removedId.TypeId.ToString().Contains("Consumable") && AdvancedStatsAndEffectsSession.Static.ConsumablesInfo.ContainsKey(removedId))
+                {
+                    var itemInfo = AdvancedStatsAndEffectsSession.Static.ConsumablesInfo[removedId];
+                    var statToCheck = GetStat(itemInfo.StatTrigger);
+                    if (statToCheck != null && statToCheck.HasAnyEffect() && DateTime.Now > lastRegenEffect)
+                    {
+                        lastRegenEffect = DateTime.Now.AddMilliseconds(statToCheck.GetEffects().Max(x => x.Value.Duration * 1000));
+                        DoConsumeItem(itemInfo);
+                    }
+                    lastRemovedIten = null;
+                }
+            }
+        }
+
+        protected override void OnInventoryContentsRemoved(MyPhysicalInventoryItem item, MyFixedPoint ammount)
+        {
+            base.OnInventoryContentsRemoved(item, ammount);
+            CheckConsumableHasSpecialAction();
         }
 
     }

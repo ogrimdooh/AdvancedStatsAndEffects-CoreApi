@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<Definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <StatDefinitions>
+    <!-- FIXED STATS -->
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup01</SubtypeId>
+      </Id>
+      <Name>StatsGroup01</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup02</SubtypeId>
+      </Id>
+      <Name>StatsGroup02</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup03</SubtypeId>
+      </Id>
+      <Name>StatsGroup03</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup04</SubtypeId>
+      </Id>
+      <Name>StatsGroup04</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup05</SubtypeId>
+      </Id>
+      <Name>StatsGroup05</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup06</SubtypeId>
+      </Id>
+      <Name>StatsGroup06</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup07</SubtypeId>
+      </Id>
+      <Name>StatsGroup07</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup08</SubtypeId>
+      </Id>
+      <Name>StatsGroup08</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup09</SubtypeId>
+      </Id>
+      <Name>StatsGroup09</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+    <Stat xsi:type="MyObjectBuilder_EntityStatDefinition">
+      <Id>
+        <TypeId>MyObjectBuilder_EntityStat</TypeId>
+        <SubtypeId>StatsGroup10</SubtypeId>
+      </Id>
+      <Name>StatsGroup10</Name>
+      <Description>#ASE#</Description>
+      <MinValue>0</MinValue>
+      <DefaultValue>0</DefaultValue>
+      <MaxValue>9999999999</MaxValue>
+      <EnabledInCreative>false</EnabledInCreative>
+    </Stat>
+  </StatDefinitions>
+</Definitions>

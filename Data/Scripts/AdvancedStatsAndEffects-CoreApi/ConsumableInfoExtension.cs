@@ -1,0 +1,42 @@
+﻿using System.Collections.Concurrent;
+
+namespace AdvancedStatsAndEffects
+{
+    public static class ConsumableInfoExtension
+    {
+
+        public static void AddToOverTimeConsumable(this AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo, OverTimeConsumable target)
+        {
+            if (consumableInfo != null && target != null)
+            {
+                foreach (var item in consumableInfo.OverTimeConsumables)
+                {
+                    if (target.CurrentValues.ContainsKey(item.Target))
+                    {
+                        target.CurrentValues[item.Target].AddAmmount(item.Amount);
+                    }
+                }
+            }
+        }
+
+        public static OverTimeConsumable GetAsOverTimeConsumable(this AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo)
+        {
+            if (consumableInfo != null)
+            {
+                var data = new OverTimeConsumable()
+                {
+                    Id = new UniqueEntityId(consumableInfo.DefinitionId),
+                    CurrentValues = new ConcurrentDictionary<string, OverTimeProperty>()
+                };
+                foreach (var item in consumableInfo.OverTimeConsumables)
+                {
+                    data.CurrentValues[item.Target] = new OverTimeProperty(item.Amount, consumableInfo.TimeToConsume);
+                }
+                return data;
+            }
+            return null;
+        }
+
+    }
+
+}
