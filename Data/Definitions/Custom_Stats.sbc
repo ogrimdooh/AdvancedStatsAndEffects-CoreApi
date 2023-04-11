@@ -122,5 +122,6 @@
       <MaxValue>9999999999</MaxValue>
       <EnabledInCreative>false</EnabledInCreative>
     </Stat>
+    
   </StatDefinitions>
 </Definitions>

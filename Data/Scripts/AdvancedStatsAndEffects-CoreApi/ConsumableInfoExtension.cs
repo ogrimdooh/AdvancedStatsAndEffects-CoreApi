@@ -5,7 +5,7 @@ namespace AdvancedStatsAndEffects
     public static class ConsumableInfoExtension
     {
 
-        public static void AddToOverTimeConsumable(this AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo, OverTimeConsumable target)
+        public static void AddToOverTimeConsumable(this ConsumableInfo consumableInfo, OverTimeConsumable target)
         {
             if (consumableInfo != null && target != null)
             {
@@ -19,7 +19,7 @@ namespace AdvancedStatsAndEffects
             }
         }
 
-        public static OverTimeConsumable GetAsOverTimeConsumable(this AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo)
+        public static OverTimeConsumable GetAsOverTimeConsumable(this ConsumableInfo consumableInfo)
         {
             if (consumableInfo != null)
             {

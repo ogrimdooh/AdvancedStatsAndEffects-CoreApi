@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace AdvancedStatsAndEffects
 {
@@ -19,6 +20,11 @@ namespace AdvancedStatsAndEffects
             Array.Copy(BitConverter.GetBytes(i.p1), 0, data, 8, 8);
             Array.Copy(BitConverter.GetBytes(i.p2), 0, data, 0, 8);
             return new Guid(data);
+        }
+
+        public static byte[] ToByteArray(this UInt128 i)
+        {
+            return i.ToGuid().ToByteArray();
         }
 
     }

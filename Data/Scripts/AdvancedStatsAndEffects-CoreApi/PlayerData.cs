@@ -11,6 +11,28 @@ namespace AdvancedStatsAndEffects
     {
 
         [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
+        public class FixedStatStack
+        {
+
+            [XmlElement]
+            public string Name { get; set; }
+            [XmlElement]
+            public byte Value { get; set; }
+
+        }
+
+        [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
+        public class FixedStatTimer
+        {
+
+            [XmlElement]
+            public string Name { get; set; }
+            [XmlElement]
+            public int Value { get; set; }
+
+        }
+
+        [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
         public class StatData
         {
 
@@ -62,7 +84,6 @@ namespace AdvancedStatsAndEffects
 
             [XmlElement]
             public SerializableDefinitionId Id { get; set; }
-
             [XmlElement]
             public string Target { get; set; }
             [XmlElement]
@@ -76,6 +97,10 @@ namespace AdvancedStatsAndEffects
         public ulong SteamPlayerId { get; set; }
         [XmlArray("Stats"), XmlArrayItem("Stat", typeof(StatData))]
         public List<StatData> Stats { get; set; } = new List<StatData>();
+        [XmlArray("FixedStatStacks"), XmlArrayItem("Stack", typeof(StatData))]
+        public List<FixedStatStack> FixedStatStacks { get; set; } = new List<FixedStatStack>();
+        [XmlArray("FixedStatTimers"), XmlArrayItem("Timer", typeof(StatData))]
+        public List<FixedStatTimer> FixedStatTimers { get; set; } = new List<FixedStatTimer>();
         [XmlArray("OverTimeConsumables"), XmlArrayItem("Consumable", typeof(OverTimeConsumableData))]
         public List<OverTimeConsumableData> OverTimeConsumables { get; set; } = new List<OverTimeConsumableData>();
         [XmlArray("OverTimeEffects"), XmlArrayItem("Effect", typeof(OverTimeEffectData))]

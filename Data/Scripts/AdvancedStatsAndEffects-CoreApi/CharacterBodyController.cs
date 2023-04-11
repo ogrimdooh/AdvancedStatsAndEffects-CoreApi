@@ -1,6 +1,7 @@
 ﻿using Sandbox.Game;
 using Sandbox.Game.Components;
 using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,18 +14,22 @@ using VRageMath;
 
 namespace AdvancedStatsAndEffects
 {
+
     public abstract class CharacterBodyController : EntityBase<IMyCharacter>
     {
-
+        
         public const string HEALTH_KEY = "Health";
+        private long deltaTime = 0;
+        private long spendTime = 0;
 
         public MyCharacterStatComponent StatComponent { get; private set; }
         protected ConcurrentDictionary<string, MyEntityStat> Stats { get; private set; } = new ConcurrentDictionary<string, MyEntityStat>();
         protected List<string> IgnoreCheckStats { get; private set; } = new List<string>();
 
-        public ConcurrentDictionary<string, BodyStatData> BodyStats { get; set; } = new ConcurrentDictionary<string, BodyStatData>();
         public List<OverTimeConsumable> OverTimeConsumables { get; set; } = new List<OverTimeConsumable>();
         public List<OverTimeEffect> OverTimeEffects { get; set; } = new List<OverTimeEffect>();
+        public ConcurrentDictionary<string, int> FixedStatTimer { get; set; } = new ConcurrentDictionary<string, int>();
+        public ConcurrentDictionary<string, byte> FixedStatStack { get; set; } = new ConcurrentDictionary<string, byte>();
 
         public MyInventory Inventory { get; private set; }
         public Guid InventoryObserver { get; private set; }
@@ -32,7 +37,7 @@ namespace AdvancedStatsAndEffects
         public MyEntityStat Health { get { return GetStat(HEALTH_KEY); } }
 
         protected Dictionary<string, MyEntityStat> statCache = new Dictionary<string, MyEntityStat>();
-        protected Vector2 lastHealthChanged = Vector2.Zero;
+        public Vector2 lastHealthChanged { get; protected set; } = Vector2.Zero;
         protected KeyValuePair<MyPhysicalInventoryItem, MyFixedPoint>? lastRemovedIten = null;
         protected bool hasDied = false;
 
@@ -60,6 +65,14 @@ namespace AdvancedStatsAndEffects
             get
             {
                 return GetIsValid();
+            }
+        }
+
+        public bool IsDead
+        {
+            get
+            {
+                return Entity == null || Entity.IsDead || Health == null || Health.Value == 0;
             }
         }
 
@@ -203,10 +216,6 @@ namespace AdvancedStatsAndEffects
         protected virtual void LoadPlayerStat(string statKey)
         {
             Stats[statKey] = GetPlayerStat(statKey);
-            BodyStats[statKey] = new BodyStatData()
-            {
-                CurrentValue = Stats[statKey].Value
-            };
         }
 
         protected MyEntityStat GetPlayerStat(string statName)
@@ -228,7 +237,6 @@ namespace AdvancedStatsAndEffects
             foreach (var key in Stats.Keys)
             {
                 Stats[key] = null;
-                BodyStats[key] = null;
             }
         }
 
@@ -242,7 +250,7 @@ namespace AdvancedStatsAndEffects
             return Entity != null && Stats.Any() && !Stats.Any(x => !IgnoreCheckStats.Contains(x.Key) && x.Value == null);
         }
 
-        public void DoConsumeItem(AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo)
+        public void DoConsumeItem(ConsumableInfo consumableInfo)
         {
             var uniqueId = new UniqueEntityId(consumableInfo.DefinitionId);
             if (OverTimeConsumables.Any(x => x.Id == uniqueId))
@@ -258,46 +266,83 @@ namespace AdvancedStatsAndEffects
             DoProcessFixedEffects(consumableInfo.FixedEffects);
         }
 
-        private void RemoveFixedEffect(string id)
+        public void RemoveFixedEffect(string id, byte stacks, bool max)
         {
             var fixedStat = AdvancedStatsAndEffectsSession.Static.GetFixedStat(id);
             if (fixedStat != null)
             {
                 var statName = $"StatsGroup{fixedStat.Group.ToString("00")}";
-                if (BodyStats.ContainsKey(statName))
+                if (Stats.ContainsKey(statName))
                 {
                     var targetValue = FixedStatsConstants.GetGroupValues(fixedStat.Group);
                     if (targetValue != null && targetValue.Length > fixedStat.Index && fixedStat.Index >= 0)
                     {
-                        var currentValue = (int)BodyStats[statName].CurrentValue;
-                        currentValue &= ~targetValue[fixedStat.Index];
-                        BodyStats[statName].CurrentValue = currentValue;
+                        var currentValue = (int)Stats[statName].Value;
+                        if ((currentValue & targetValue[fixedStat.Index]) != 0)
+                        {
+                            var doRemove = true;
+                            if (fixedStat.CanStack)
+                            {
+                                if (!max && FixedStatStack.ContainsKey(id))
+                                {
+                                    FixedStatStack[id] -= stacks;
+                                    doRemove = FixedStatStack[id] <= 0;
+                                }
+                                if (doRemove)
+                                    FixedStatStack.Remove(id);
+                            }
+                            if (doRemove)
+                            {
+                                currentValue &= ~targetValue[fixedStat.Index];
+                                Stats[statName].Value = currentValue;
+                                if (fixedStat.CanSelfRemove)
+                                {
+                                    if (FixedStatTimer.ContainsKey(id))
+                                        FixedStatTimer.Remove(id);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        private void AddFixedEffect(string id)
+        public void AddFixedEffect(string id, byte stacks, bool max)
         {
             var fixedStat = AdvancedStatsAndEffectsSession.Static.GetFixedStat(id);
             if (fixedStat != null)
             {
                 var statName = $"StatsGroup{fixedStat.Group.ToString("00")}";
-                if (BodyStats.ContainsKey(statName))
+                if (Stats.ContainsKey(statName))
                 {
                     var targetValue = FixedStatsConstants.GetGroupValues(fixedStat.Group);
                     if (targetValue != null && targetValue.Length > fixedStat.Index && fixedStat.Index >= 0)
                     {
-                        var currentValue = (int)BodyStats[statName].CurrentValue;
-                        currentValue |= targetValue[fixedStat.Index];
-                        BodyStats[statName].CurrentValue = currentValue;
+                        var currentValue = (int)Stats[statName].Value;
+                        if ((currentValue & targetValue[fixedStat.Index]) == 0)
+                        {
+                            currentValue |= targetValue[fixedStat.Index];
+                            Stats[statName].Value = currentValue;
+                        }
+                        if (fixedStat.CanStack)
+                        {
+                            if (FixedStatStack.ContainsKey(id))
+                                FixedStatStack[id] += max ? fixedStat.MaxStacks : stacks;
+                            else
+                                FixedStatStack[id] = max ? fixedStat.MaxStacks : stacks;
+                            FixedStatStack[id] = Math.Min(FixedStatStack[id], fixedStat.MaxStacks);
+                        }
+                        if (fixedStat.CanSelfRemove)
+                        {
+                            FixedStatTimer[id] = fixedStat.TimeToSelfRemove;
+                        }
                     }
                 }
             }
         }
 
 
-        private void DoProcessFixedEffects(List<AdvancedStatsAndEffectsAPIBackend.FixedEffectInConsumableInfo> effects)
+        private void DoProcessFixedEffects(List<FixedEffectInConsumableInfo> effects)
         {
             if (effects != null && effects.Any())
             {
@@ -306,22 +351,22 @@ namespace AdvancedStatsAndEffects
                     var chance = effect.Chance * 100;
                     switch (effect.Type)
                     {
-                        case AdvancedStatsAndEffectsAPIBackend.FixedEffectInConsumableType.Add:
-                            AddFixedEffect(effect.Target);
+                        case FixedEffectInConsumableType.Add:
+                            AddFixedEffect(effect.Target, effect.Stacks, effect.MaxStacks);
                             break;
-                        case AdvancedStatsAndEffectsAPIBackend.FixedEffectInConsumableType.ChanceAdd:
+                        case FixedEffectInConsumableType.ChanceAdd:
                             if (chance >= 100 || AdvancedStatsAndEffectsSession.CheckChance(chance))
                             {
-                                AddFixedEffect(effect.Target);
+                                AddFixedEffect(effect.Target, effect.Stacks, effect.MaxStacks);
                             }
                             break;
-                        case AdvancedStatsAndEffectsAPIBackend.FixedEffectInConsumableType.Remove:
-                            RemoveFixedEffect(effect.Target);
+                        case FixedEffectInConsumableType.Remove:
+                            RemoveFixedEffect(effect.Target, effect.Stacks, effect.MaxStacks);
                             break;
-                        case AdvancedStatsAndEffectsAPIBackend.FixedEffectInConsumableType.ChanceRemove:
+                        case FixedEffectInConsumableType.ChanceRemove:
                             if (chance >= 100 || AdvancedStatsAndEffectsSession.CheckChance(chance))
                             {
-                                RemoveFixedEffect(effect.Target);
+                                RemoveFixedEffect(effect.Target, effect.Stacks, effect.MaxStacks);
                             }
                             break;
                     }
@@ -331,11 +376,11 @@ namespace AdvancedStatsAndEffects
 
         private void DoInstantEffect(string target, float value)
         {
-            if (BodyStats.ContainsKey(target))
-                BodyStats[target].CurrentValue += value;
+            if (Stats.ContainsKey(target))
+                Stats[target].Value += value;
         }
 
-        private void DoProcessOverTimeEffects(UniqueEntityId id, List<AdvancedStatsAndEffectsAPIBackend.OverTimeEffectInfo> effects)
+        private void DoProcessOverTimeEffects(UniqueEntityId id, List<OverTimeEffectInfo> effects)
         {
             if (effects != null && effects.Any())
             {
@@ -343,10 +388,10 @@ namespace AdvancedStatsAndEffects
                 {
                     switch (effect.Type)
                     {
-                        case AdvancedStatsAndEffectsAPIBackend.OverTimeEffectType.Instant:
+                        case OverTimeEffectType.Instant:
                             DoInstantEffect(effect.Target, effect.Amount);
                             break;
-                        case AdvancedStatsAndEffectsAPIBackend.OverTimeEffectType.OverTime:
+                        case OverTimeEffectType.OverTime:
                             if (OverTimeEffects.Any(x => x.Id == id && x.Target == effect.Target))
                             {
                                 var effectInDigestion = OverTimeEffects.FirstOrDefault(x => x.Id == id && x.Target == effect.Target);
@@ -367,470 +412,201 @@ namespace AdvancedStatsAndEffects
             }
         }
 
-    }
-
-    public static class FixedStatsConstants
-    {
-
-        [Flags]
-        public enum StatsGroup01
+        private long GetGameTime()
         {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
+            return ExtendedSurvivalCoreAPI.Registered ? ExtendedSurvivalCoreAPI.GetGameTime() : AdvancedStatsAndEffectsTimeManager.Instance.GameTime;
         }
 
-        [Flags]
-        public enum StatsGroup02
+        public void DoRefreshDeltaTime()
         {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
+            deltaTime = GetGameTime();
         }
 
-        [Flags]
-        public enum StatsGroup03
+        public void ProcessStatsCycle()
         {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup04
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup05
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup06
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup07
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup08
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup09
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        [Flags]
-        public enum StatsGroup10
-        {
-
-            None = 0,
-            Flag01 = 1 << 1,
-            Flag02 = 1 << 2,
-            Flag03 = 1 << 3,
-            Flag04 = 1 << 4,
-            Flag05 = 1 << 5,
-            Flag06 = 1 << 6,
-            Flag07 = 1 << 7,
-            Flag08 = 1 << 8,
-            Flag09 = 1 << 9,
-            Flag10 = 1 << 10,
-            Flag11 = 1 << 11,
-            Flag12 = 1 << 12,
-            Flag13 = 1 << 13,
-            Flag14 = 1 << 14,
-            Flag15 = 1 << 15,
-            Flag16 = 1 << 16,
-            Flag17 = 1 << 17,
-            Flag18 = 1 << 18,
-            Flag19 = 1 << 19,
-            Flag20 = 1 << 20,
-            Flag21 = 1 << 21,
-            Flag22 = 1 << 22,
-            Flag23 = 1 << 23,
-            Flag24 = 1 << 24,
-            Flag25 = 1 << 25,
-            Flag26 = 1 << 26,
-            Flag27 = 1 << 27,
-            Flag28 = 1 << 28,
-            Flag29 = 1 << 29,
-            Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
-
-        }
-
-        public static int[] GetGroupValues(int group)
-        {
-            var type = GetGroupType(group);
-            if (type != null)
+            if (!MyAPIGateway.Session.CreativeMode && IsValid)
             {
-                return (int[])Enum.GetValues(type);
-            }
-            return null;
-        }
+                if (deltaTime == 0)
+                    DoRefreshDeltaTime();
+                var updateTime = GetGameTime() - deltaTime;
+                spendTime += updateTime;
 
-        public static Type GetGroupType(int group)
-        {
-            switch (group)
-            {
-                case 1:
-                    return typeof(StatsGroup01);
-                case 2:
-                    return typeof(StatsGroup02);
-                case 3:
-                    return typeof(StatsGroup03);
-                case 4:
-                    return typeof(StatsGroup04);
-                case 5:
-                    return typeof(StatsGroup05);
-                case 6:
-                    return typeof(StatsGroup06);
-                case 7:
-                    return typeof(StatsGroup07);
-                case 8:
-                    return typeof(StatsGroup08);
-                case 9:
-                    return typeof(StatsGroup09);
-                case 10:
-                    return typeof(StatsGroup10);
-            }
-            return null;
-        }
+                /* Before Cycle */
+                foreach (var stat in AdvancedStatsAndEffectsSession.Static.StatBeforeCycle.Keys)
+                {
+                    var targetStat = GetStat(stat);
+                    if (targetStat != null)
+                    {
+                        foreach (var statCycle in AdvancedStatsAndEffectsSession.Static.StatBeforeCycle[stat])
+                        {
+                            if (statCycle.Action != null)
+                                statCycle.Action(PlayerId, spendTime, updateTime, Entity, StatComponent, targetStat);
+                        }
+                    }
+                }
 
-        public static IEnumerable<T> GetFlags<T>(this T value) where T : struct
-        {
-            foreach (T flag in Enum.GetValues(typeof(T)).Cast<T>())
-            {
-                if (value.IsFlagSet(flag))
-                    yield return flag;
+                DoRefreshDeltaTime();
+                long cicleType = 1000; /* default cycle time */
+                if (spendTime >= cicleType)
+                {
+                    spendTime -= cicleType;
+
+                    /* Start Cycle */
+                    bool canExecute = true;
+                    if (AdvancedStatsAndEffectsSession.Static.BeforeCycle.Any())
+                        foreach (var beforeUpdate in AdvancedStatsAndEffectsSession.Static.BeforeCycle)
+                        {
+                            if (beforeUpdate.Action != null && !beforeUpdate.Action(PlayerId, Entity, StatComponent))
+                            {
+                                canExecute = false;
+                                break;
+                            }
+                        }
+
+                    if (canExecute)
+                    {
+
+                        foreach (var stat in AdvancedStatsAndEffectsSession.Static.StartStatCycle.Keys)
+                        {
+                            var targetStat = GetStat(stat);
+                            if (targetStat != null)
+                            {
+                                foreach (var statCycle in AdvancedStatsAndEffectsSession.Static.StartStatCycle[stat])
+                                {
+                                    if (statCycle.Action != null)
+                                        statCycle.Action(PlayerId, Entity, StatComponent, targetStat);
+                                }
+                            }
+                        }
+
+                        DoAbsorptionCicle();
+                        DoEffectCicle();
+
+                        /* End Cycle */
+                        if (AdvancedStatsAndEffectsSession.Static.AfterCycle.Any())
+                            foreach (var afterUpdate in AdvancedStatsAndEffectsSession.Static.AfterCycle)
+                            {
+                                if (afterUpdate.Action != null)
+                                    afterUpdate.Action(PlayerId, Entity, StatComponent);
+                            }
+                        foreach (var stat in AdvancedStatsAndEffectsSession.Static.EndStatCycle.Keys)
+                        {
+                            var targetStat = GetStat(stat);
+                            if (targetStat != null)
+                            {
+                                foreach (var statCycle in AdvancedStatsAndEffectsSession.Static.EndStatCycle[stat])
+                                {
+                                    if (statCycle.Action != null)
+                                        statCycle.Action(PlayerId, Entity, StatComponent, targetStat);
+                                }
+                            }
+                        }
+
+                    }
+
+                }
             }
         }
 
-        public static bool IsFlagSet<T>(this T value, T flag) where T : struct
+        private void DoEffectCicle()
         {
-            long lValue = Convert.ToInt64(value);
-            long lFlag = Convert.ToInt64(flag);
-            return (lValue & lFlag) != 0;
+            foreach (var effect in OverTimeEffects)
+            {
+                if ((effect.CurrentValue.IsPositive && effect.CurrentValue.Current > 0) ||
+                    (!effect.CurrentValue.IsPositive && effect.CurrentValue.Current < 0))
+                {
+                    if (Stats.Keys.Contains(effect.Target))
+                    {
+                        Stats[effect.Target].Value += effect.CurrentValue.ConsumeRate;
+                        effect.CurrentValue.Current -= effect.CurrentValue.ConsumeRate;
+                    }
+                    else
+                    {
+                        effect.CurrentValue.Current = 0;
+                    }
+                }
+            }
+            OverTimeEffects.RemoveAll(x =>
+                (x.CurrentValue.IsPositive && x.CurrentValue.Current <= 0) ||
+                (!x.CurrentValue.IsPositive && x.CurrentValue.Current >= 0)
+            );
         }
 
-        public static int GetMaxSetFlagValue<T>(T flags) where T : struct
+        private void DoAbsorptionCicle()
         {
-            int value = (int)Convert.ChangeType(flags, typeof(int));
-            IEnumerable<int> setValues = Enum.GetValues(flags.GetType()).Cast<int>().Where(f => (f & value) == f);
-            return setValues.Any() ? setValues.Max() : 0;
+            foreach (var consumable in OverTimeConsumables)
+            {
+                foreach (var valueKey in consumable.CurrentValues.Keys)
+                {
+                    if (Stats.Keys.Contains(valueKey))
+                    {
+                        Stats[valueKey].Value += consumable.CurrentValues[valueKey].ConsumeRate;
+                        consumable.CurrentValues[valueKey].Current -= consumable.CurrentValues[valueKey].ConsumeRate;
+                    }
+                    else
+                    {
+                        if (AdvancedStatsAndEffectsSession.Static.IsVirtualStat(valueKey))
+                        {
+                            var virtualStat = AdvancedStatsAndEffectsSession.Static.GetVirtualStat(valueKey);
+                            consumable.CurrentValues[valueKey].Current -= consumable.CurrentValues[valueKey].ConsumeRate;
+                            var consumeRate = consumable.CurrentValues[valueKey].ConsumeRate;
+                            if (Stats.Keys.Contains(virtualStat.Target))
+                            {
+                                var maxRate = Stats[virtualStat.Target].MaxValue - Stats[virtualStat.Target].Value;
+                                Stats[virtualStat.Target].Value += consumable.CurrentValues[valueKey].ConsumeRate;
+                                if (maxRate < consumeRate)
+                                    consumeRate -= maxRate;
+                                else
+                                    consumeRate = 0;
+                            }
+                            if (AdvancedStatsAndEffectsSession.Static.VirtualStatAbsorptionCicle.ContainsKey(valueKey))
+                                foreach (var virtualStatAbsorptionCicle in AdvancedStatsAndEffectsSession.Static.VirtualStatAbsorptionCicle[valueKey])
+                                {
+                                    if (virtualStatAbsorptionCicle.Action != null)
+                                        virtualStatAbsorptionCicle.Action(
+                                            valueKey,
+                                            consumeRate,
+                                            consumable.Id.DefinitionId,
+                                            PlayerId,
+                                            Entity,
+                                            StatComponent
+                                        );
+                                }
+                        }
+                        else
+                        {
+                            consumable.CurrentValues.Remove(valueKey);
+                        }
+                    }
+                }
+            }
+            OverTimeConsumables.RemoveAll(x => x.FullyConsumed);
+        }
+
+        public float GetRemainOverTimeConsumable(string stat)
+        {
+            return OverTimeConsumables.Where(x => x.CurrentValues.ContainsKey(stat)).Sum(x => x.CurrentValues[stat].Current);
+        }
+
+        public void DoEmptyConsumables()
+        {
+            OverTimeConsumables.Clear();
+        }
+
+        public void SetCharacterStatValue(string name, float value)
+        {
+            if (Stats.Keys.Contains(name))
+            {
+                Stats[name].Value = value;
+            }
+        }
+
+        public void ResetCharacterStats()
+        {
+            foreach (var key in Stats.Keys)
+            {
+                Stats[key].Value = Stats[key].DefaultValue;
+            }
         }
 
     }

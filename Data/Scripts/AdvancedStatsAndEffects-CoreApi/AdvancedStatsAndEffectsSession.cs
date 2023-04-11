@@ -1,4 +1,6 @@
 ﻿using Sandbox.Definitions;
+using Sandbox.Game.Components;
+using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Concurrent;
@@ -7,6 +9,7 @@ using System.Linq;
 using System.Text;
 using VRage.Game;
 using VRage.Game.Components;
+using VRage.Game.ModAPI;
 
 namespace AdvancedStatsAndEffects
 {
@@ -14,6 +17,71 @@ namespace AdvancedStatsAndEffects
     [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
     public class AdvancedStatsAndEffectsSession : BaseSessionComponent
     {
+
+        public class OnPlayerCanUpdate
+        {
+
+            public Func<long, IMyCharacter, MyCharacterStatComponent, bool> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnPlayersUpdate
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnCanCycle
+        {
+
+            public Func<long, IMyCharacter, MyCharacterStatComponent, bool> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnCycle
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnStatCycle
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, MyEntityStat> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnStatBeforeCycle
+        {
+
+            public Action<long, long, long, IMyCharacter, MyCharacterStatComponent, MyEntityStat> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnVirtualStatAbsorptionCicle
+        {
+
+            public Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public List<OnPlayerCanUpdate> BeforePlayersUpdate { get; set; } = new List<OnPlayerCanUpdate>();
+        public List<OnPlayersUpdate> AfterPlayersUpdate { get; set; } = new List<OnPlayersUpdate>();
+        public List<OnCanCycle> BeforeCycle { get; set; } = new List<OnCanCycle>();
+        public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();
+        public ConcurrentDictionary<string, List<OnStatCycle>> StartStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatCycle>>();
+        public ConcurrentDictionary<string, List<OnStatCycle>> EndStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatCycle>>();
+        public ConcurrentDictionary<string, List<OnStatBeforeCycle>> StatBeforeCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatBeforeCycle>>();
+        public ConcurrentDictionary<string, List<OnVirtualStatAbsorptionCicle>> VirtualStatAbsorptionCicle { get; set; } = new ConcurrentDictionary<string, List<OnVirtualStatAbsorptionCicle>>();
 
         public static bool CheckChance(float chance)
         {
@@ -35,19 +103,50 @@ namespace AdvancedStatsAndEffects
 
         public ConcurrentDictionary<string, MyEntityStatDefinition> BodyStatsConfigs { get; set; } = new ConcurrentDictionary<string, MyEntityStatDefinition>();
         public List<string> TriggerStats { get; set; } = new List<string>();
-        public ConcurrentDictionary<MyDefinitionId, AdvancedStatsAndEffectsAPIBackend.ConsumableInfo> ConsumablesInfo { get; set; } = new ConcurrentDictionary<MyDefinitionId, AdvancedStatsAndEffectsAPIBackend.ConsumableInfo>();
-        public ConcurrentDictionary<string, AdvancedStatsAndEffectsAPIBackend.FixedStatInfo> FixedStatsInfo { get; set; } = new ConcurrentDictionary<string, AdvancedStatsAndEffectsAPIBackend.FixedStatInfo>();
+        public ConcurrentDictionary<MyDefinitionId, ConsumableInfo> ConsumablesInfo { get; set; } = new ConcurrentDictionary<MyDefinitionId, ConsumableInfo>();
+        public ConcurrentDictionary<string, FixedStatInfo> FixedStatsInfo { get; set; } = new ConcurrentDictionary<string, FixedStatInfo>();
+        public ConcurrentDictionary<string, VirtualStatInfo> VirtualStatInfo { get; set; } = new ConcurrentDictionary<string, VirtualStatInfo>();
 
         public ExtendedSurvivalCoreAPI ESCoreAPI;
 
-        public AdvancedStatsAndEffectsAPIBackend.FixedStatInfo GetFixedStat(string id)
+        public bool IsVirtualStat(string id)
         {
-            if (FixedStatsInfo.ContainsKey(id))
+            return VirtualStatInfo.ContainsKey(id);
+        }
+
+        public bool IsFixedStat(string id)
+        {
+            return FixedStatsInfo.ContainsKey(id);
+        }
+
+        public VirtualStatInfo GetVirtualStat(string id)
+        {
+            if (IsVirtualStat(id))
+                return VirtualStatInfo[id];
+            return null;
+        }
+
+        public FixedStatInfo GetFixedStat(string id)
+        {
+            if (IsFixedStat(id))
                 return FixedStatsInfo[id];
             return null;
         }
 
-        public void DoConfigureFixedStat(AdvancedStatsAndEffectsAPIBackend.FixedStatInfo fixedStatInfo)
+        public void DoConfigureVirtualStat(VirtualStatInfo virtualStatInfo)
+        {
+            if (!VirtualStatInfo.Keys.Contains(virtualStatInfo.Name))
+            {
+                VirtualStatInfo[virtualStatInfo.Name] = virtualStatInfo;
+                AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Registred Virtual Stat : {virtualStatInfo.Name}");
+            }
+            else
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogWarning(GetType(), $"DoConfigureVirtualStat : Virtual Stat is already registred");
+            }
+        }
+
+        public void DoConfigureFixedStat(FixedStatInfo fixedStatInfo)
         {
             if (!FixedStatsInfo.Keys.Contains(fixedStatInfo.Id))
             {
@@ -67,7 +166,7 @@ namespace AdvancedStatsAndEffects
             }
         }
 
-        public void DoConfigureConsumable(AdvancedStatsAndEffectsAPIBackend.ConsumableInfo consumableInfo)
+        public void DoConfigureConsumable(ConsumableInfo consumableInfo)
         {
             if (!ConsumablesInfo.Keys.Contains(consumableInfo.DefinitionId))
             {
@@ -285,6 +384,30 @@ namespace AdvancedStatsAndEffects
             }
         }
 
+        public override void SaveData()
+        {
+            base.SaveData();
+
+            if (IsServer)
+            {
+                try
+                {
+                    foreach (var key in AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.Keys)
+                    {
+                        var player = AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[key];
+                        AdvancedStatsAndEffectsStorage.Instance.SetPlayerData(player.GetStoreData());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
+                }
+
+                AdvancedStatsAndEffectsSettings.Save();
+                AdvancedStatsAndEffectsStorage.Save();
+            }
+        }
+
         public override void LoadData()
         {
             
@@ -322,6 +445,15 @@ namespace AdvancedStatsAndEffects
             {
                 definitionsChecked = true;
 
+                var playerCharacters = new string[] { "Default_Astronaut", "Default_Astronaut_Female" };
+                foreach (var character in playerCharacters)
+                {
+                    foreach (FixedStatsConstants.ValidStats stat in Enum.GetValues(typeof(FixedStatsConstants.ValidStats)).Cast<FixedStatsConstants.ValidStats>())
+                    {
+                        DefinitionUtils.AddStatToCharacter(stat.ToString(), character);
+                    }
+                }
+
             }
         }
 
@@ -351,6 +483,55 @@ namespace AdvancedStatsAndEffects
         public IEnumerable<string> GetPlayerStatsList()
         {
             return BodyStatsConfigs.Keys;
+        }
+
+        protected override void DoUpdate60()
+        {
+            base.DoUpdate60();
+
+            if (MyAPIGateway.Session.IsServer)
+            {
+
+                PlayersUpdate();
+
+            }
+        }
+
+        private void PlayersUpdate()
+        {
+            try
+            {
+                foreach (var key in AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.Keys)
+                {
+                    var player = AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[key];
+                    if (!player.IsValid || player.IsDead)
+                        continue;
+                    bool canExecute = true;
+                    if (BeforePlayersUpdate.Any())
+                        foreach (var beforeUpdate in BeforePlayersUpdate)
+                        {
+                            if (beforeUpdate.Action != null && !beforeUpdate.Action(key, player.Entity, player.StatComponent))
+                            {
+                                canExecute = false;
+                                break;
+                            }
+                        }
+                    if (canExecute)
+                    {
+                        player.ProcessStatsCycle();
+                        if (AfterPlayersUpdate.Any())
+                            foreach (var afterUpdate in AfterPlayersUpdate)
+                            {
+                                if (afterUpdate.Action != null)
+                                    afterUpdate.Action(key, player.Entity, player.StatComponent);
+                            }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
+            }
         }
 
     }
