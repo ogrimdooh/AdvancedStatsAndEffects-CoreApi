@@ -14,7 +14,7 @@ using VRage.Game.ModAPI;
 namespace AdvancedStatsAndEffects
 {
 
-    [MySessionComponentDescriptor(MyUpdateOrder.NoUpdate)]
+    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
     public class AdvancedStatsAndEffectsSession : BaseSessionComponent
     {
 
@@ -382,6 +382,11 @@ namespace AdvancedStatsAndEffects
             {
                 AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
             }
+        }
+
+        public override void BeforeStart()
+        {
+            AdvancedStatsAndEffectsAPIBackend.BeforeStart();
         }
 
         public override void SaveData()

@@ -73,7 +73,7 @@ namespace AdvancedStatsAndEffects
 
             [XmlElement]
             public SerializableDefinitionId Id { get; set; }
-            [XmlArray("Values"), XmlArrayItem("Value", typeof(StatData))]
+            [XmlArray("Values"), XmlArrayItem("Value", typeof(OverTimeNamedPropertyData))]
             public List<OverTimeNamedPropertyData> CurrentValues { get; set; } = new List<OverTimeNamedPropertyData>();
 
         }
@@ -97,9 +97,9 @@ namespace AdvancedStatsAndEffects
         public ulong SteamPlayerId { get; set; }
         [XmlArray("Stats"), XmlArrayItem("Stat", typeof(StatData))]
         public List<StatData> Stats { get; set; } = new List<StatData>();
-        [XmlArray("FixedStatStacks"), XmlArrayItem("Stack", typeof(StatData))]
+        [XmlArray("FixedStatStacks"), XmlArrayItem("Stack", typeof(FixedStatStack))]
         public List<FixedStatStack> FixedStatStacks { get; set; } = new List<FixedStatStack>();
-        [XmlArray("FixedStatTimers"), XmlArrayItem("Timer", typeof(StatData))]
+        [XmlArray("FixedStatTimers"), XmlArrayItem("Timer", typeof(FixedStatTimer))]
         public List<FixedStatTimer> FixedStatTimers { get; set; } = new List<FixedStatTimer>();
         [XmlArray("OverTimeConsumables"), XmlArrayItem("Consumable", typeof(OverTimeConsumableData))]
         public List<OverTimeConsumableData> OverTimeConsumables { get; set; } = new List<OverTimeConsumableData>();
