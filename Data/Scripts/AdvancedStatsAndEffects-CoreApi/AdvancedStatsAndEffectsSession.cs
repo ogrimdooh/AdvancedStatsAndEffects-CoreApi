@@ -516,7 +516,26 @@ namespace AdvancedStatsAndEffects
             {
 
                 PlayersUpdate();
+                CreaturesUpdate();
 
+            }
+        }
+
+        private void CreaturesUpdate()
+        {
+            try
+            {
+                foreach (var key in AdvancedStatsAndEffectsEntityManager.Instance.BotCharacters.Keys)
+                {
+                    var bot = AdvancedStatsAndEffectsEntityManager.Instance.BotCharacters[key];
+                    if (!bot.IsValid || bot.IsDead)
+                        continue;
+                    bot.ProcessStatsCycle();
+                }
+            }
+            catch (Exception ex)
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
             }
         }
 
