@@ -186,12 +186,15 @@ namespace AdvancedStatsAndEffects
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterPlayersUpdateCallback;
         private static Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool> _AddBeforeCycleCallback;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterCycleCallback;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterPlayerReset;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool> _AddAfterPlayerRespawn;
         private static Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddVirtualStatAbsorptionCicle;
         private static Func<long, string, byte, bool, bool> _AddFixedEffect;
         private static Func<long, string, byte, bool, bool> _RemoveFixedEffect;
         private static Func<long, bool> _ClearOverTimeConsumable;
         private static Func<long, string, float> _GetRemainOverTimeConsumable;
         private static Func<long, Vector2> _GetLastHealthChange;
+        private static Func<long, MyDefinitionId, bool> _DoPlayerConsume;
 
         /// <summary>
         /// Returns true if the version is compatibile with the API Backend, this is automatically called
@@ -208,6 +211,30 @@ namespace AdvancedStatsAndEffects
         {
             var value = _GetGameTime?.Invoke();
             return value.HasValue ? value.Value : 0;
+        }
+
+        /// <summary>
+        /// Make player to consume a target consumable
+        /// </summary>
+        public static bool DoPlayerConsume(long playerId, MyDefinitionId consumableId)
+        {
+            return _DoPlayerConsume?.Invoke(playerId, consumableId) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after player reset status
+        /// </summary>
+        public static bool AddAfterPlayerReset(Action<long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
+        {
+            return _AddAfterPlayerReset?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after player respawn
+        /// </summary>
+        public static bool AddAfterPlayerRespawn(Action<long, IMyCharacter, MyCharacterStatComponent, bool> callback, int priority)
+        {
+            return _AddAfterPlayerRespawn?.Invoke(callback, priority) ?? false;
         }
 
         /// <summary>
@@ -428,11 +455,14 @@ namespace AdvancedStatsAndEffects
                         _AddBeforeCycleCallback = (Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>)ModAPIMethods["AddBeforeCycleCallback"];
                         _AddAfterCycleCallback = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterCycleCallback"];
                         _AddVirtualStatAbsorptionCicle = (Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddVirtualStatAbsorptionCicle"];
+                        _AddAfterPlayerReset = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterPlayerReset"];
+                        _AddAfterPlayerRespawn = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>)ModAPIMethods["AddAfterPlayerRespawn"];
                         _AddFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["AddFixedEffect"];
                         _RemoveFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["RemoveFixedEffect"];
                         _ClearOverTimeConsumable = (Func<long, bool>)ModAPIMethods["ClearOverTimeConsumable"];
                         _GetRemainOverTimeConsumable = (Func<long, string, float>)ModAPIMethods["GetRemainOverTimeConsumable"];
                         _GetLastHealthChange = (Func<long, Vector2>)ModAPIMethods["GetLastHealthChange"];
+                        _DoPlayerConsume = (Func<long, MyDefinitionId, bool>)ModAPIMethods["DoPlayerConsume"];
 
                         if (m_onRegisteredAction != null)
                             m_onRegisteredAction();

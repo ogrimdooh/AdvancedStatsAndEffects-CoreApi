@@ -119,9 +119,9 @@ namespace AdvancedStatsAndEffects
                         {
                             OverTimeEffects.Add(OverTimeEffect.FromSaveData(effect));
                         }
-                        foreach (var effect in storeData.Stats)
+                        foreach (var stat in storeData.Stats)
                         {
-                            Stats[effect.Name].Value = effect.Value;
+                            Stats[stat.Name].Value = stat.Value;
                         }
                         FixedStatStack.Clear();
                         foreach (var stack in storeData.FixedStatStacks)

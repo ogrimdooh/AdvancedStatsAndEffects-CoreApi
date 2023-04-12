@@ -59,8 +59,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -99,8 +98,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -139,8 +137,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -179,8 +176,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -219,8 +215,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -259,8 +254,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -299,8 +293,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -339,8 +332,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -379,8 +371,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -419,8 +410,7 @@ namespace AdvancedStatsAndEffects
             Flag28 = 1 << 28,
             Flag29 = 1 << 29,
             Flag30 = 1 << 30,
-            Flag31 = 1 << 31,
-            Flag32 = 1 << 32
+            Flag31 = 1 << 31
 
         }
 
@@ -429,7 +419,7 @@ namespace AdvancedStatsAndEffects
             var type = GetGroupType(group);
             if (type != null)
             {
-                return (int[])Enum.GetValues(type);
+                return Enum.GetValues(type).Cast<int>().ToArray();
             }
             return null;
         }

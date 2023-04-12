@@ -591,6 +591,7 @@ namespace AdvancedStatsAndEffects
         public void DoEmptyConsumables()
         {
             OverTimeConsumables.Clear();
+            OverTimeEffects.Clear();
         }
 
         public void SetCharacterStatValue(string name, float value)
@@ -606,6 +607,16 @@ namespace AdvancedStatsAndEffects
             foreach (var key in Stats.Keys)
             {
                 Stats[key].Value = Stats[key].DefaultValue;
+            }
+            DoEmptyConsumables();
+            FixedStatStack.Clear();
+            FixedStatTimer.Clear();
+            foreach (var playerReset in AdvancedStatsAndEffectsSession.Static.PlayerReset)
+            {
+                if (playerReset.Action != null)
+                {
+                    playerReset.Action(PlayerId, Entity, StatComponent);
+                }
             }
         }
 

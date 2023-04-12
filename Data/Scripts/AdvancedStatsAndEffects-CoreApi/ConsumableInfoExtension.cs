@@ -30,7 +30,7 @@ namespace AdvancedStatsAndEffects
                 };
                 foreach (var item in consumableInfo.OverTimeConsumables)
                 {
-                    data.CurrentValues[item.Target] = new OverTimeProperty(item.Amount, consumableInfo.TimeToConsume);
+                    data.CurrentValues[item.Target] = new OverTimeProperty(item.Amount, item.Amount / consumableInfo.TimeToConsume);
                 }
                 return data;
             }

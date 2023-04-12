@@ -41,12 +41,15 @@ namespace AdvancedStatsAndEffects
             ["AddAfterPlayersUpdateCallback"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterPlayersUpdateCallback),
             ["AddBeforeCycleCallback"] = new Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddBeforeCycleCallback),
             ["AddAfterCycleCallback"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterCycleCallback),
-            ["AddVirtualStatAbsorptionCicle"] = new Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddVirtualStatAbsorptionCicle),
+            ["AddVirtualStatAbsorptionCicle"] = new Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddVirtualStatAbsorptionCicle),            
+            ["AddAfterPlayerReset"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterPlayerReset),
+            ["AddAfterPlayerRespawn"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddAfterPlayerRespawn),
             ["AddFixedEffect"] = new Func<long, string, byte, bool, bool>(AddFixedEffect),
             ["RemoveFixedEffect"] = new Func<long, string, byte, bool, bool>(RemoveFixedEffect),
             ["ClearOverTimeConsumable"] = new Func<long, bool>(ClearOverTimeConsumable),
             ["GetRemainOverTimeConsumable"] = new Func<long, string, float>(GetRemainOverTimeConsumable),
-            ["GetLastHealthChange"] = new Func<long, Vector2>(GetLastHealthChange)
+            ["GetLastHealthChange"] = new Func<long, Vector2>(GetLastHealthChange),
+            ["DoPlayerConsume"] = new Func<long, MyDefinitionId, bool>(DoPlayerConsume)
         };
 
         public static void BeforeStart()
@@ -68,6 +71,50 @@ namespace AdvancedStatsAndEffects
             if (AdvancedStatsAndEffectsTimeManager.Instance != null)
                 return AdvancedStatsAndEffectsTimeManager.Instance.GameTime;
             return 0;
+        }
+
+        public static bool DoPlayerConsume(long playerId, MyDefinitionId consumableId)
+        {
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
+            {
+                if (AdvancedStatsAndEffectsSession.Static.ConsumablesInfo.ContainsKey(consumableId))
+                {
+                    player.DoConsumeItem(AdvancedStatsAndEffectsSession.Static.ConsumablesInfo[consumableId]);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool AddAfterPlayerRespawn(Action<long, IMyCharacter, MyCharacterStatComponent, bool> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.PlayerRespawn.Add(new AdvancedStatsAndEffectsSession.OnPlayerRespawn()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.PlayerRespawn.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool AddAfterPlayerReset(Action<long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.PlayerReset.Add(new AdvancedStatsAndEffectsSession.OnPlayerReset()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.PlayerReset.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
         }
 
         public static bool AddVirtualStatAbsorptionCicle(string targetStat, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
@@ -136,45 +183,50 @@ namespace AdvancedStatsAndEffects
 
         public static bool AddFixedEffect(long playerId, string fixedEffectId, byte stacks, bool max)
         {
-            if (AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.ContainsKey(playerId))
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
             {
-                AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[playerId].AddFixedEffect(fixedEffectId, stacks, max);
+                player.AddFixedEffect(fixedEffectId, stacks, max);
             }
             return false;
         }
 
         public static bool RemoveFixedEffect(long playerId, string fixedEffectId, byte stacks, bool max)
         {
-            if (AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.ContainsKey(playerId))
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
             {
-                AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[playerId].RemoveFixedEffect(fixedEffectId, stacks, max);
+                player.RemoveFixedEffect(fixedEffectId, stacks, max);
             }
             return false;
         }
 
         public static Vector2 GetLastHealthChange(long playerId)
         {
-            if (AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.ContainsKey(playerId))
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
             {
-                return AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[playerId].lastHealthChanged;
+                return player.lastHealthChanged;
             }
             return Vector2.Zero;
         }
 
         public static float GetRemainOverTimeConsumable(long playerId, string stat)
         {
-            if (AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.ContainsKey(playerId))
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
             {
-                return AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[playerId].GetRemainOverTimeConsumable(stat);
+                return player.GetRemainOverTimeConsumable(stat);
             }
             return 0;
         }
 
         public static bool ClearOverTimeConsumable(long playerId)
         {
-            if (AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.ContainsKey(playerId))
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
             {
-                AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters[playerId].DoEmptyConsumables();
+                player.DoEmptyConsumables();
             }
             return false;
         }

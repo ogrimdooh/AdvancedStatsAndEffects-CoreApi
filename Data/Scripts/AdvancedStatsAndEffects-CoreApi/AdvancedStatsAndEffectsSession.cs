@@ -74,10 +74,28 @@ namespace AdvancedStatsAndEffects
 
         }
 
+        public class OnPlayerRespawn
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, bool> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnPlayerReset
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
         public List<OnPlayerCanUpdate> BeforePlayersUpdate { get; set; } = new List<OnPlayerCanUpdate>();
         public List<OnPlayersUpdate> AfterPlayersUpdate { get; set; } = new List<OnPlayersUpdate>();
         public List<OnCanCycle> BeforeCycle { get; set; } = new List<OnCanCycle>();
         public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();
+        public List<OnPlayerRespawn> PlayerRespawn { get; set; } = new List<OnPlayerRespawn>();
+        public List<OnPlayerReset> PlayerReset { get; set; } = new List<OnPlayerReset>();
         public ConcurrentDictionary<string, List<OnStatCycle>> StartStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatCycle>>();
         public ConcurrentDictionary<string, List<OnStatCycle>> EndStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatCycle>>();
         public ConcurrentDictionary<string, List<OnStatBeforeCycle>> StatBeforeCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatBeforeCycle>>();

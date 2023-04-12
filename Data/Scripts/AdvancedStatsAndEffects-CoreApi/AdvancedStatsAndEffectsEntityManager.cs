@@ -1,4 +1,5 @@
 ﻿using Sandbox.Game;
+using Sandbox.Game.Components;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
 using System.Collections.Concurrent;
@@ -138,14 +139,39 @@ namespace AdvancedStatsAndEffects
                     if (PlayerCharacters.Any(x => x.Value.PlayerId == playerId))
                     {
                         var playerChar = PlayerCharacters.FirstOrDefault(x => x.Value.PlayerId == playerId).Value;
+                        var newChar = playerChar.Entity.EntityId != character.EntityId;
                         playerChar.ConfigureCharacter(character);
+                        if (newChar)
+                        {
+                            foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
+                            {
+                                if (playerRespawn.Action != null)
+                                {
+                                    playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), false);
+                                }
+                            }
+                        }
                     }
                     else
                     {
+                        bool newPod = false;
                         PlayerCharacters[character.EntityId] = new PlayerCharacterBodyController(character);
                         var steamId = PlayerCharacters[character.EntityId].Player?.SteamUserId;
                         if (steamId.HasValue)
+                        {
                             PlayerCharacters[character.EntityId].LoadStoreData(AdvancedStatsAndEffectsStorage.Instance.GetPlayerData(steamId.Value));
+                        }
+                        else
+                        {
+                            newPod = true;
+                        }
+                        foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
+                        {
+                            if (playerRespawn.Action != null)
+                            {
+                                playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), newPod);
+                            }
+                        }
                     }
                 }
                 else
