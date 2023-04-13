@@ -38,6 +38,50 @@ namespace AdvancedStatsAndEffects
     }
 
     [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
+    public class PlayerStatValueData
+    {
+
+        [ProtoMember(1)]
+        public string Target { get; set; }
+
+        [ProtoMember(2)]
+        public float Value { get; set; }
+
+    }
+
+    [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
+    public class PlayerStatGenericData
+    {
+
+        [ProtoMember(1)]
+        public string Target { get; set; }
+
+        [ProtoMember(2)]
+        public string Value { get; set; }
+
+    }
+
+    [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
+    public class PlayerClientUpdateData
+    {
+
+        [ProtoMember(1)]
+        public int HashCode { get; set; }
+        [ProtoMember(2)]
+        public List<PlayerStatValueData> FixedStatsStacks { get; set; } = new List<PlayerStatValueData>();
+        [ProtoMember(3)]
+        public List<PlayerStatValueData> FixedStatsTimers { get; set; } = new List<PlayerStatValueData>();
+        [ProtoMember(4)]
+        public List<PlayerStatGenericData> CustomData { get; set; } = new List<PlayerStatGenericData>();
+
+        public override int GetHashCode()
+        {
+            return HashCode;
+        }
+
+    }
+
+    [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
     public class FixedEffectInConsumableInfo
     {
 
@@ -160,6 +204,140 @@ namespace AdvancedStatsAndEffects
 
     }
 
+    public class AdvancedStatsAndEffectsClientAPI
+    {
+
+        private static AdvancedStatsAndEffectsClientAPI instance;
+
+        public static string ModName = "";
+        public const ushort ModHandlerID = 35876;
+        public const int ModAPIVersion = 1;
+
+        public static bool Registered { get; private set; } = false;
+
+        private static Dictionary<string, Delegate> ModAPIMethods;
+
+        private static Func<int, string, bool> _VerifyVersion;
+        private static Func<string, byte> _GetPlayerFixedStatStack;
+        private static Func<string, long> _GetPlayerFixedStatRemainTime;
+        private static Func<int> _GetPlayerFixedStatUpdateHash;
+
+        /// <summary>
+        /// Returns the hash of a player data to use in HUD updates
+        /// </summary>
+        public static int GetPlayerFixedStatUpdateHash()
+        {
+            return _GetPlayerFixedStatUpdateHash?.Invoke() ?? 0;
+        }
+
+        /// <summary>
+        /// Returns true if the version is compatibile with the API Backend, this is automatically called
+        /// </summary>
+        public static bool VerifyVersion(int Version, string ModName)
+        {
+            return _VerifyVersion?.Invoke(Version, ModName) ?? false;
+        }
+
+        /// <summary>
+        /// Get the stack of a fixed stat in the player
+        /// </summary>
+        public static byte GetPlayerFixedStatStack(string fixedStat)
+        {
+            return _GetPlayerFixedStatStack?.Invoke(fixedStat) ?? 0;
+        }
+
+        /// <summary>
+        /// Get the remain timer of a fixed stat in the player
+        /// </summary>
+        public static long GetPlayerFixedStatRemainTime(string fixedStat)
+        {
+            return _GetPlayerFixedStatRemainTime?.Invoke(fixedStat) ?? 0;
+        }
+
+        /// <summary>
+        /// Unregisters the mod
+        /// </summary>
+        public void Unregister()
+        {
+            if (instance != null)
+            {
+                instance.DoUnregister();
+            }
+        }
+
+        /// <summary>
+        /// Unregisters the mod
+        /// </summary>
+        public void DoUnregister()
+        {
+            MyAPIGateway.Utilities.UnregisterMessageHandler(ModHandlerID, ModHandler);
+            Registered = false;
+            instance = null;
+            m_onRegisteredAction = null;
+        }
+
+        private Action m_onRegisteredAction;
+
+        /// <summary>
+        /// Create a Advanced Stats And Effects API Instance. Please only create one per mod. 
+        /// </summary>
+        /// <param name="onRegisteredAction">Callback once the Advanced Stats And Effects API is active. You can Instantiate Advanced Stats And Effects API objects in this Action</param>
+        public AdvancedStatsAndEffectsClientAPI(Action onRegisteredAction = null)
+        {
+            if (instance != null)
+            {
+                return;
+            }
+            instance = this;
+            m_onRegisteredAction = onRegisteredAction;
+            MyAPIGateway.Utilities.RegisterMessageHandler(ModHandlerID, ModHandler);
+            if (ModName == "")
+            {
+                if (MyAPIGateway.Utilities.GamePaths.ModScopeName.Contains("_"))
+                    ModName = MyAPIGateway.Utilities.GamePaths.ModScopeName.Split('_')[1];
+                else
+                    ModName = MyAPIGateway.Utilities.GamePaths.ModScopeName;
+            }
+        }
+
+        private void ModHandler(object obj)
+        {
+            if (obj == null)
+            {
+                return;
+            }
+
+            if (obj is Dictionary<string, Delegate>)
+            {
+                ModAPIMethods = (Dictionary<string, Delegate>)obj;
+                _VerifyVersion = (Func<int, string, bool>)ModAPIMethods["VerifyVersion"];
+
+                Registered = VerifyVersion(ModAPIVersion, ModName);
+
+                MyLog.Default.WriteLine("Registering Advanced Stats And Effects Client API for Mod '" + ModName + "'");
+
+                if (Registered)
+                {
+                    try
+                    {
+                        _GetPlayerFixedStatStack = (Func<string, byte>)ModAPIMethods["GetPlayerFixedStatStack"];
+                        _GetPlayerFixedStatRemainTime = (Func<string, long>)ModAPIMethods["GetPlayerFixedStatRemainTime"];
+                        _GetPlayerFixedStatUpdateHash = (Func<int>)ModAPIMethods["GetPlayerFixedStatUpdateHash"];
+
+                        if (m_onRegisteredAction != null)
+                            m_onRegisteredAction();
+                    }
+                    catch (Exception e)
+                    {
+                        MyAPIGateway.Utilities.ShowMessage("Advanced Stats And Effects", "Mod '" + ModName + "' encountered an error when registering the Advanced Stats And Effects Client API, see log for more info.");
+                        MyLog.Default.WriteLine("Advanced Stats And Effects: " + e);
+                    }
+                }
+            }
+        }
+
+    }
+
     public class AdvancedStatsAndEffectsAPI
     {
 
@@ -195,6 +373,9 @@ namespace AdvancedStatsAndEffects
         private static Func<long, string, float> _GetRemainOverTimeConsumable;
         private static Func<long, Vector2> _GetLastHealthChange;
         private static Func<long, MyDefinitionId, bool> _DoPlayerConsume;
+        private static Func<long, string, byte> _GetPlayerFixedStatStack;
+        private static Func<long, string, long> _GetPlayerFixedStatRemainTime;
+        private static Func<long, int> _GetPlayerFixedStatUpdateHash;
 
         /// <summary>
         /// Returns true if the version is compatibile with the API Backend, this is automatically called
@@ -202,6 +383,30 @@ namespace AdvancedStatsAndEffects
         public static bool VerifyVersion(int Version, string ModName)
         {
             return _VerifyVersion?.Invoke(Version, ModName) ?? false;
+        }
+
+        /// <summary>
+        /// Returns the hash of a player data to use in HUD updates
+        /// </summary>
+        public static int GetPlayerFixedStatUpdateHash(long playerId)
+        {
+            return _GetPlayerFixedStatUpdateHash?.Invoke(playerId) ?? 0;
+        }
+
+        /// <summary>
+        /// Get the stack of a fixed stat in the player
+        /// </summary>
+        public static byte GetPlayerFixedStatStack(long playerId, string fixedStat)
+        {
+            return _GetPlayerFixedStatStack?.Invoke(playerId, fixedStat) ?? 0;
+        }
+
+        /// <summary>
+        /// Get the remain timer of a fixed stat in the player
+        /// </summary>
+        public static long GetPlayerFixedStatRemainTime(long playerId, string fixedStat)
+        {
+            return _GetPlayerFixedStatRemainTime?.Invoke(playerId, fixedStat) ?? 0;
         }
 
         /// <summary>
@@ -463,6 +668,9 @@ namespace AdvancedStatsAndEffects
                         _GetRemainOverTimeConsumable = (Func<long, string, float>)ModAPIMethods["GetRemainOverTimeConsumable"];
                         _GetLastHealthChange = (Func<long, Vector2>)ModAPIMethods["GetLastHealthChange"];
                         _DoPlayerConsume = (Func<long, MyDefinitionId, bool>)ModAPIMethods["DoPlayerConsume"];
+                        _GetPlayerFixedStatStack = (Func<long, string, byte>)ModAPIMethods["GetPlayerFixedStatStack"];
+                        _GetPlayerFixedStatRemainTime = (Func<long, string, long>)ModAPIMethods["GetPlayerFixedStatRemainTime"];
+                        _GetPlayerFixedStatUpdateHash = (Func<long, int>)ModAPIMethods["GetPlayerFixedStatUpdateHash"];
 
                         if (m_onRegisteredAction != null)
                             m_onRegisteredAction();

@@ -28,7 +28,7 @@ namespace AdvancedStatsAndEffects
             [XmlElement]
             public string Name { get; set; }
             [XmlElement]
-            public int Value { get; set; }
+            public long Value { get; set; }
 
         }
 

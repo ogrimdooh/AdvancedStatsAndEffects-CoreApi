@@ -108,6 +108,7 @@ namespace AdvancedStatsAndEffects
 
         public const ushort NETWORK_ID_COMMANDS = 41823;
         public const ushort NETWORK_ID_DEFINITIONS = 41824;
+        public const ushort NETWORK_ID_STATSSYSTEM = 41825;
         public const string CALL_FOR_DEFS = "NEEDDEFS";
 
         public static AdvancedStatsAndEffectsSession Static { get; private set; }
@@ -124,6 +125,7 @@ namespace AdvancedStatsAndEffects
         public ConcurrentDictionary<MyDefinitionId, ConsumableInfo> ConsumablesInfo { get; set; } = new ConcurrentDictionary<MyDefinitionId, ConsumableInfo>();
         public ConcurrentDictionary<string, FixedStatInfo> FixedStatsInfo { get; set; } = new ConcurrentDictionary<string, FixedStatInfo>();
         public ConcurrentDictionary<string, VirtualStatInfo> VirtualStatInfo { get; set; } = new ConcurrentDictionary<string, VirtualStatInfo>();
+        public PlayerClientUpdateData LastUpdateData { get; private set; }
 
         public ExtendedSurvivalCoreAPI ESCoreAPI;
 
@@ -205,6 +207,7 @@ namespace AdvancedStatsAndEffects
             if (!IsDedicated)
             {
                 MyAPIGateway.Utilities.MessageEntered += OnMessageEntered;
+                MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(NETWORK_ID_STATSSYSTEM, ClientUpdateMsgHandler);
             }
 
             if (IsServer)
@@ -239,6 +242,37 @@ namespace AdvancedStatsAndEffects
                     Encoding.Unicode.GetBytes(message)
                 );
 
+            }
+
+        }
+
+        protected override void UnloadData()
+        {
+            ESCoreAPI.Unregister();
+
+            if (!IsDedicated)
+                MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(NETWORK_ID_STATSSYSTEM, ClientUpdateMsgHandler);
+
+            if (IsServer)
+                MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(NETWORK_ID_COMMANDS, CommandsMsgHandler);
+
+            base.UnloadData();
+        }
+
+        private void ClientUpdateMsgHandler(ushort netId, byte[] data, ulong steamId, bool fromServer)
+        {
+            try
+            {
+                if (netId != NETWORK_ID_STATSSYSTEM)
+                    return;
+
+                var message = Encoding.Unicode.GetString(data);
+                LastUpdateData = MyAPIGateway.Utilities.SerializeFromXML<PlayerClientUpdateData>(message);
+
+            }
+            catch (Exception ex)
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
             }
 
         }
@@ -404,7 +438,14 @@ namespace AdvancedStatsAndEffects
 
         public override void BeforeStart()
         {
-            AdvancedStatsAndEffectsAPIBackend.BeforeStart();
+            if (IsServer)
+            {
+                AdvancedStatsAndEffectsAPIBackend.BeforeStart();
+            }
+            else
+            {
+                AdvancedStatsAndEffectsClientAPIBackend.BeforeStart();
+            }
         }
 
         public override void SaveData()

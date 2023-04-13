@@ -19,6 +19,7 @@ using Sandbox.Game.Components;
 
 namespace AdvancedStatsAndEffects
 {
+
     //Do not include this file in your project modders
     public class AdvancedStatsAndEffectsAPIBackend
     {
@@ -49,7 +50,10 @@ namespace AdvancedStatsAndEffects
             ["ClearOverTimeConsumable"] = new Func<long, bool>(ClearOverTimeConsumable),
             ["GetRemainOverTimeConsumable"] = new Func<long, string, float>(GetRemainOverTimeConsumable),
             ["GetLastHealthChange"] = new Func<long, Vector2>(GetLastHealthChange),
-            ["DoPlayerConsume"] = new Func<long, MyDefinitionId, bool>(DoPlayerConsume)
+            ["DoPlayerConsume"] = new Func<long, MyDefinitionId, bool>(DoPlayerConsume),
+            ["GetPlayerFixedStatStack"] = new Func<long, string, byte>(GetPlayerFixedStatStack),
+            ["GetPlayerFixedStatRemainTime"] = new Func<long, string, long>(GetPlayerFixedStatRemainTime),
+            ["GetPlayerFixedStatUpdateHash"] = new Func<long, int>(GetPlayerFixedStatUpdateHash)
         };
 
         public static void BeforeStart()
@@ -64,6 +68,42 @@ namespace AdvancedStatsAndEffects
                 return false;
             }
             return true;
+        }
+
+        public static int GetPlayerFixedStatUpdateHash(long playerId)
+        {
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
+            {
+                return player.GetPlayerFixedStatUpdateHash();
+            }
+            return 0;
+        }
+
+        public static byte GetPlayerFixedStatStack(long playerId, string fixedStat)
+        {
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
+            {
+                if (player.FixedStatStack.ContainsKey(fixedStat))
+                {
+                    return player.FixedStatStack[fixedStat];
+                }
+            }
+            return 0;
+        }
+
+        public static long GetPlayerFixedStatRemainTime(long playerId, string fixedStat)
+        {
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
+            {
+                if (player.FixedStatTimer.ContainsKey(fixedStat))
+                {
+                    return player.FixedStatTimer[fixedStat];
+                }
+            }
+            return 0;
         }
 
         public static long GetGameTime()

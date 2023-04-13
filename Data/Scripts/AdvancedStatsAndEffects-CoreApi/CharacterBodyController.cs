@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using VRage;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
@@ -21,6 +22,7 @@ namespace AdvancedStatsAndEffects
         public const string HEALTH_KEY = "Health";
         private long deltaTime = 0;
         private long spendTime = 0;
+        private int updateHash = 0;
 
         public MyCharacterStatComponent StatComponent { get; private set; }
         protected ConcurrentDictionary<string, MyEntityStat> Stats { get; private set; } = new ConcurrentDictionary<string, MyEntityStat>();
@@ -28,7 +30,7 @@ namespace AdvancedStatsAndEffects
 
         public List<OverTimeConsumable> OverTimeConsumables { get; set; } = new List<OverTimeConsumable>();
         public List<OverTimeEffect> OverTimeEffects { get; set; } = new List<OverTimeEffect>();
-        public ConcurrentDictionary<string, int> FixedStatTimer { get; set; } = new ConcurrentDictionary<string, int>();
+        public ConcurrentDictionary<string, long> FixedStatTimer { get; set; } = new ConcurrentDictionary<string, long>();
         public ConcurrentDictionary<string, byte> FixedStatStack { get; set; } = new ConcurrentDictionary<string, byte>();
 
         public MyInventory Inventory { get; private set; }
@@ -301,6 +303,7 @@ namespace AdvancedStatsAndEffects
                                         FixedStatTimer.Remove(id);
                                 }
                             }
+                            RefreshUpdateHash();
                         }
                     }
                 }
@@ -336,6 +339,7 @@ namespace AdvancedStatsAndEffects
                         {
                             FixedStatTimer[id] = fixedStat.TimeToSelfRemove;
                         }
+                        RefreshUpdateHash();
                     }
                 }
             }
@@ -422,6 +426,7 @@ namespace AdvancedStatsAndEffects
             deltaTime = GetGameTime();
         }
 
+        private readonly long cicleType = 1000; /* default cycle time */
         public void ProcessStatsCycle()
         {
             if (!MyAPIGateway.Session.CreativeMode && IsValid)
@@ -446,7 +451,6 @@ namespace AdvancedStatsAndEffects
                 }
 
                 DoRefreshDeltaTime();
-                long cicleType = 1000; /* default cycle time */
                 if (spendTime >= cicleType)
                 {
                     spendTime -= cicleType;
@@ -481,6 +485,7 @@ namespace AdvancedStatsAndEffects
 
                         DoAbsorptionCicle();
                         DoEffectCicle();
+                        DoFixedStatCycle();
 
                         /* End Cycle */
                         if (AdvancedStatsAndEffectsSession.Static.AfterCycle.Any())
@@ -502,8 +507,90 @@ namespace AdvancedStatsAndEffects
                             }
                         }
 
+                        DoSendDataToClient();
+
                     }
 
+                }
+            }
+        }
+
+        private PlayerClientUpdateData lastSendData = null;
+        private void DoSendDataToClient()
+        {
+            try
+            {
+                if (MyAPIGateway.Utilities.IsDedicated || MyAPIGateway.Session.Player.IdentityId != PlayerId)
+                {
+                    if (lastSendData == null || lastSendData.HashCode != updateHash)
+                    {
+                        lastSendData = GetPlayerSendData();
+                        if (lastSendData != null)
+                        {
+                            string message = MyAPIGateway.Utilities.SerializeToXML<PlayerClientUpdateData>(lastSendData);
+                            MyAPIGateway.Multiplayer.SendMessageTo(
+                                AdvancedStatsAndEffectsSession.NETWORK_ID_STATSSYSTEM,
+                                Encoding.Unicode.GetBytes(message),
+                                Player.SteamUserId
+                            );
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
+            }
+        }
+
+        public int GetPlayerFixedStatUpdateHash()
+        {
+            return updateHash;
+        }
+
+        private void RefreshUpdateHash()
+        {
+            updateHash = new Random().Next(0, int.MaxValue);
+        }
+
+        private PlayerClientUpdateData GetPlayerSendData()
+        {
+            return new PlayerClientUpdateData()
+            {
+                HashCode = updateHash,
+                FixedStatsStacks = FixedStatStack.Select(x => new PlayerStatValueData() { Target = x.Key, Value = x.Value }).ToList(),
+                FixedStatsTimers = FixedStatTimer.Select(x => new PlayerStatValueData() { Target = x.Key, Value = x.Value }).ToList()
+            };
+        }
+
+        private void DoFixedStatCycle()
+        {
+            var keys = FixedStatTimer.Keys.ToArray();
+            foreach (var fixedStat in keys)
+            {
+                var fixedStatData = AdvancedStatsAndEffectsSession.Static.GetFixedStat(fixedStat);
+                if (fixedStatData != null)
+                {
+                    if (FixedStatTimer.ContainsKey(fixedStat))
+                    {
+                        FixedStatTimer[fixedStat] -= cicleType;
+                        if (FixedStatTimer[fixedStat] <= 0)
+                        {
+                            RemoveFixedEffect(fixedStat, Math.Max(fixedStatData.StacksWhenRemove, (byte)1), fixedStatData.CompleteRemove);
+                        }
+                        else
+                        {
+                            RefreshUpdateHash();
+                        }
+                    }
+                }
+                else
+                {
+                    FixedStatTimer.Remove(fixedStat);
+                    if (FixedStatStack.ContainsKey(fixedStat))
+                    {
+                        FixedStatStack.Remove(fixedStat);
+                    }
                 }
             }
         }
