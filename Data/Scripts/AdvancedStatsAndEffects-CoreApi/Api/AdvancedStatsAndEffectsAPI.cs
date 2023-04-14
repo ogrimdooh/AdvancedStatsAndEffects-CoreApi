@@ -364,6 +364,7 @@ namespace AdvancedStatsAndEffects
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterPlayersUpdateCallback;
         private static Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool> _AddBeforeCycleCallback;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterCycleCallback;
+        private static Func<string, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddFixedStatCycleCallback;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterPlayerReset;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool> _AddAfterPlayerRespawn;
         private static Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddVirtualStatAbsorptionCicle;
@@ -547,6 +548,14 @@ namespace AdvancedStatsAndEffects
         }
 
         /// <summary>
+        /// Add a callback after cycle
+        /// </summary>
+        public static bool AddFixedStatCycleCallback(string fixedStat, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
+        {
+            return _AddFixedStatCycleCallback?.Invoke(fixedStat, callback, priority) ?? false;
+        }
+
+        /// <summary>
         /// Set a stat to be a consumable trigger to the system
         /// </summary>
         public static bool SetStatAsConsumableTrigger(string statToBind)
@@ -659,6 +668,7 @@ namespace AdvancedStatsAndEffects
                         _AddAfterPlayersUpdateCallback = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterPlayersUpdateCallback"];
                         _AddBeforeCycleCallback = (Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>)ModAPIMethods["AddBeforeCycleCallback"];
                         _AddAfterCycleCallback = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterCycleCallback"];
+                        _AddFixedStatCycleCallback = (Func<string, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddFixedStatCycleCallback"];
                         _AddVirtualStatAbsorptionCicle = (Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddVirtualStatAbsorptionCicle"];
                         _AddAfterPlayerReset = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterPlayerReset"];
                         _AddAfterPlayerRespawn = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>)ModAPIMethods["AddAfterPlayerRespawn"];

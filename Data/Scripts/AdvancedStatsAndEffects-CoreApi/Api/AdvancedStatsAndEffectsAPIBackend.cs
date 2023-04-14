@@ -42,6 +42,7 @@ namespace AdvancedStatsAndEffects
             ["AddAfterPlayersUpdateCallback"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterPlayersUpdateCallback),
             ["AddBeforeCycleCallback"] = new Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddBeforeCycleCallback),
             ["AddAfterCycleCallback"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterCycleCallback),
+            ["AddFixedStatCycleCallback"] = new Func<string, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddFixedStatCycleCallback),
             ["AddVirtualStatAbsorptionCicle"] = new Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddVirtualStatAbsorptionCicle),            
             ["AddAfterPlayerReset"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterPlayerReset),
             ["AddAfterPlayerRespawn"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddAfterPlayerRespawn),
@@ -281,6 +282,25 @@ namespace AdvancedStatsAndEffects
                     Priority = priority
                 });
                 AdvancedStatsAndEffectsSession.Static.BeforeCycle.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool AddFixedStatCycleCallback(string fixedStat, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
+        {
+            if (callback != null)
+            {
+                if (!AdvancedStatsAndEffectsSession.Static.FixedStatsInfo.ContainsKey(fixedStat))
+                    return false;
+                if (!AdvancedStatsAndEffectsSession.Static.FixedStatCycle.ContainsKey(fixedStat))
+                    AdvancedStatsAndEffectsSession.Static.FixedStatCycle[fixedStat] = new List<AdvancedStatsAndEffectsSession.OnFixedStatCycle>();
+                AdvancedStatsAndEffectsSession.Static.FixedStatCycle[fixedStat].Add(new AdvancedStatsAndEffectsSession.OnFixedStatCycle()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.FixedStatCycle[fixedStat].Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
                 return true;
             }
             return false;

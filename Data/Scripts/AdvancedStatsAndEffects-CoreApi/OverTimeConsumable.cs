@@ -13,7 +13,9 @@ namespace AdvancedStatsAndEffects
         {
             get
             {
-                return Math.Max(CurrentValues.Values.Max(x => x.Current), 0);
+                if (CurrentValues.Any())
+                    return Math.Max(CurrentValues.Values.Max(x => x.Current), 0);
+                return 0;
             }
         }
 

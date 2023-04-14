@@ -268,6 +268,25 @@ namespace AdvancedStatsAndEffects
             DoProcessFixedEffects(consumableInfo.FixedEffects);
         }
 
+        public bool HasFixedEffect(string id)
+        {
+            var fixedStat = AdvancedStatsAndEffectsSession.Static.GetFixedStat(id);
+            if (fixedStat != null)
+            {
+                var statName = $"StatsGroup{fixedStat.Group.ToString("00")}";
+                if (Stats.ContainsKey(statName))
+                {
+                    var targetValue = FixedStatsConstants.GetGroupValues(fixedStat.Group);
+                    if (targetValue != null && targetValue.Length > fixedStat.Index && fixedStat.Index >= 0)
+                    {
+                        var currentValue = (int)Stats[statName].Value;
+                        return (currentValue & targetValue[fixedStat.Index]) != 0;
+                    }
+                }
+            }
+            return false;
+        }
+
         public void RemoveFixedEffect(string id, byte stacks, bool max)
         {
             var fixedStat = AdvancedStatsAndEffectsSession.Static.GetFixedStat(id);
@@ -289,6 +308,10 @@ namespace AdvancedStatsAndEffects
                                 {
                                     FixedStatStack[id] -= stacks;
                                     doRemove = FixedStatStack[id] <= 0;
+                                    if (!doRemove && fixedStat.CanSelfRemove)
+                                    {
+                                        FixedStatTimer[id] = fixedStat.TimeToSelfRemove;
+                                    }
                                 }
                                 if (doRemove)
                                     FixedStatStack.Remove(id);
@@ -590,6 +613,21 @@ namespace AdvancedStatsAndEffects
                     if (FixedStatStack.ContainsKey(fixedStat))
                     {
                         FixedStatStack.Remove(fixedStat);
+                    }
+                }
+            }
+            foreach (var fixedStat in AdvancedStatsAndEffectsSession.Static.FixedStatCycle.Keys)
+            {
+                if (HasFixedEffect(fixedStat))
+                {
+                    foreach (var fixedStatAction in AdvancedStatsAndEffectsSession.Static.FixedStatCycle[fixedStat])
+                    {
+                        if (fixedStatAction.Action != null)
+                        {
+                            var statck = FixedStatStack.ContainsKey(fixedStat) ? FixedStatStack[fixedStat] : (byte)0;
+                            var timer = FixedStatTimer.ContainsKey(fixedStat) ? FixedStatTimer[fixedStat] : 0;
+                            fixedStatAction.Action(fixedStat, statck, timer, PlayerId, Entity, StatComponent);
+                        }
                     }
                 }
             }
