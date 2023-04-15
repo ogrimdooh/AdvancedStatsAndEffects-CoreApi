@@ -368,6 +368,7 @@ namespace AdvancedStatsAndEffects
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterPlayerReset;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool> _AddAfterPlayerRespawn;
         private static Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddVirtualStatAbsorptionCicle;
+        private static Func<Action<long, IMyCharacter>, int, bool> _AddAfterBotAdd;
         private static Func<long, string, byte, bool, bool> _AddFixedEffect;
         private static Func<long, string, byte, bool, bool> _RemoveFixedEffect;
         private static Func<long, bool> _ClearOverTimeConsumable;
@@ -441,6 +442,14 @@ namespace AdvancedStatsAndEffects
         public static bool AddAfterPlayerRespawn(Action<long, IMyCharacter, MyCharacterStatComponent, bool> callback, int priority)
         {
             return _AddAfterPlayerRespawn?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after bot added
+        /// </summary>
+        public static bool AddAfterBotAdd(Action<long, IMyCharacter> callback, int priority)
+        {
+            return _AddAfterBotAdd?.Invoke(callback, priority) ?? false;
         }
 
         /// <summary>
@@ -672,6 +681,7 @@ namespace AdvancedStatsAndEffects
                         _AddVirtualStatAbsorptionCicle = (Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddVirtualStatAbsorptionCicle"];
                         _AddAfterPlayerReset = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterPlayerReset"];
                         _AddAfterPlayerRespawn = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>)ModAPIMethods["AddAfterPlayerRespawn"];
+                        _AddAfterBotAdd = (Func<Action<long, IMyCharacter>, int, bool>)ModAPIMethods["AddAfterBotAdd"];
                         _AddFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["AddFixedEffect"];
                         _RemoveFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["RemoveFixedEffect"];
                         _ClearOverTimeConsumable = (Func<long, bool>)ModAPIMethods["ClearOverTimeConsumable"];

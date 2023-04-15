@@ -180,6 +180,13 @@ namespace AdvancedStatsAndEffects
                     {
                         AdvancedStatsAndEffectsLogging.Instance.LogInfo(typeof(AdvancedStatsAndEffectsEntityManager), $"MyEntities_OnEntityAddWatcher IMyCharacter BotId:{playerId} EntityId:{character.EntityId} DisplayName:{character.Name}");
                         BotCharacters[character.EntityId] = new BotCharacterBodyController(character);
+                        foreach (var afterBotAdd in AdvancedStatsAndEffectsSession.Static.AfterBotAdd)
+                        {
+                            if (afterBotAdd.Action != null)
+                            {
+                                afterBotAdd.Action(character.EntityId, character);
+                            }
+                        }
                     }
                 }
             }

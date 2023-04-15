@@ -46,6 +46,7 @@ namespace AdvancedStatsAndEffects
             ["AddVirtualStatAbsorptionCicle"] = new Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddVirtualStatAbsorptionCicle),            
             ["AddAfterPlayerReset"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterPlayerReset),
             ["AddAfterPlayerRespawn"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddAfterPlayerRespawn),
+            ["AddAfterBotAdd"] = new Func<Action<long, IMyCharacter>, int, bool>(AddAfterBotAdd),
             ["AddFixedEffect"] = new Func<long, string, byte, bool, bool>(AddFixedEffect),
             ["RemoveFixedEffect"] = new Func<long, string, byte, bool, bool>(RemoveFixedEffect),
             ["ClearOverTimeConsumable"] = new Func<long, bool>(ClearOverTimeConsumable),
@@ -124,6 +125,21 @@ namespace AdvancedStatsAndEffects
                     player.DoConsumeItem(AdvancedStatsAndEffectsSession.Static.ConsumablesInfo[consumableId]);
                     return true;
                 }
+            }
+            return false;
+        }
+
+        public static bool AddAfterBotAdd(Action<long, IMyCharacter> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.AfterBotAdd.Add(new AdvancedStatsAndEffectsSession.OnBotAdd()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.AfterBotAdd.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
             }
             return false;
         }
