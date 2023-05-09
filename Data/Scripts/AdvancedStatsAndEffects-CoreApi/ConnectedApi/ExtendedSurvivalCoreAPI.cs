@@ -53,6 +53,7 @@ namespace AdvancedStatsAndEffects
         public bool CanBuy { get; set; }
         public bool CanSell { get; set; }
         public bool CanOrder { get; set; }
+        public bool ForceMinimalPrice { get; set; }
 
     }
 
