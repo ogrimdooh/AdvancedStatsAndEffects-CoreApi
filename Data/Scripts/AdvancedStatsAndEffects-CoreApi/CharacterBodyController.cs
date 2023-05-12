@@ -548,7 +548,7 @@ namespace AdvancedStatsAndEffects
                     if (lastSendData == null || lastSendData.HashCode != updateHash)
                     {
                         lastSendData = GetPlayerSendData();
-                        if (lastSendData != null)
+                        if (lastSendData != null && Player != null)
                         {
                             string message = MyAPIGateway.Utilities.SerializeToXML<PlayerClientUpdateData>(lastSendData);
                             MyAPIGateway.Multiplayer.SendMessageTo(
