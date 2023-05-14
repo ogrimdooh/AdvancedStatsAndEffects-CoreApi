@@ -107,10 +107,23 @@ namespace AdvancedStatsAndEffects
         protected virtual void OnBeginConfigureCharacter()
         {
             Entity.CharacterDied += Character_CharacterDied;
+            Entity.MovementStateChanged += Character_MovementStateChanged;
             StatComponent = Entity.Components.Get<MyEntityStatComponent>() as MyCharacterStatComponent;
             ClearStatsCache();
             if (StatComponent != null)
                 LoadPlayerStat(HEALTH_KEY);
+        }
+
+        private void Character_MovementStateChanged(IMyCharacter character, VRage.Game.MyCharacterMovementEnum oldState, VRage.Game.MyCharacterMovementEnum newState)
+        {
+            if (AdvancedStatsAndEffectsSession.Static.PlayerMovementChange.Any())
+                foreach (var playerMovementChange in AdvancedStatsAndEffectsSession.Static.PlayerMovementChange)
+                {
+                    if (playerMovementChange.Action != null)
+                    {
+                        playerMovementChange.Action(PlayerId, Entity, StatComponent, oldState, newState);
+                    }
+                }
         }
 
         private Guid DoCreateNewObserver()
@@ -134,7 +147,10 @@ namespace AdvancedStatsAndEffects
         protected virtual void OnEndConfigureCharacter()
         {
             if (StatComponent != null)
+            {
+                Health.OnStatChanged -= Health_OnStatChanged; /* if try to add duplicated, remove first */
                 Health.OnStatChanged += Health_OnStatChanged;
+            }
             Inventory = Entity.GetInventory() as MyInventory;
             if (Inventory != null)
             {
@@ -178,7 +194,14 @@ namespace AdvancedStatsAndEffects
 
         protected virtual void OnHealthChanged(float newValue, float oldValue, object statChangeData)
         {
-
+            if (AdvancedStatsAndEffectsSession.Static.PlayerHealthChanged.Any())
+                foreach (var playerHealthChanged in AdvancedStatsAndEffectsSession.Static.PlayerHealthChanged)
+                {
+                    if (playerHealthChanged.Action != null)
+                    {
+                        playerHealthChanged.Action(PlayerId, Entity, StatComponent, newValue, oldValue, statChangeData);
+                    }
+                }
         }
 
         protected void Health_OnStatChanged(float newValue, float oldValue, object statChangeData)

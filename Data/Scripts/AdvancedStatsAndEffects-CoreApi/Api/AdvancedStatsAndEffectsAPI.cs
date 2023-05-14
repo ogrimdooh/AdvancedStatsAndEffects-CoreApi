@@ -367,6 +367,8 @@ namespace AdvancedStatsAndEffects
         private static Func<string, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddFixedStatCycleCallback;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterPlayerReset;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool> _AddAfterPlayerRespawn;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum>, int, bool> _AddOnMovementStateChanged;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool> _AddOnHealthChanged;
         private static Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddVirtualStatAbsorptionCicle;
         private static Func<Action<long, IMyCharacter>, int, bool> _AddAfterBotAdd;
         private static Func<long, string, byte, bool, bool> _AddFixedEffect;
@@ -434,6 +436,22 @@ namespace AdvancedStatsAndEffects
         public static bool AddAfterPlayerReset(Action<long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
         {
             return _AddAfterPlayerReset?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after player change moviment status
+        /// </summary>
+        public static bool AddOnMovementStateChanged(Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum> callback, int priority)
+        {
+            return _AddOnMovementStateChanged?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after player change health
+        /// </summary>
+        public static bool AddOnHealthChanged(Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object> callback, int priority)
+        {
+            return _AddOnHealthChanged?.Invoke(callback, priority) ?? false;
         }
 
         /// <summary>
@@ -681,6 +699,8 @@ namespace AdvancedStatsAndEffects
                         _AddVirtualStatAbsorptionCicle = (Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddVirtualStatAbsorptionCicle"];
                         _AddAfterPlayerReset = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterPlayerReset"];
                         _AddAfterPlayerRespawn = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>)ModAPIMethods["AddAfterPlayerRespawn"];
+                        _AddOnMovementStateChanged = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum>, int, bool>)ModAPIMethods["AddOnMovementStateChanged"];
+                        _AddOnHealthChanged = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool>)ModAPIMethods["AddOnHealthChanged"];
                         _AddAfterBotAdd = (Func<Action<long, IMyCharacter>, int, bool>)ModAPIMethods["AddAfterBotAdd"];
                         _AddFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["AddFixedEffect"];
                         _RemoveFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["RemoveFixedEffect"];

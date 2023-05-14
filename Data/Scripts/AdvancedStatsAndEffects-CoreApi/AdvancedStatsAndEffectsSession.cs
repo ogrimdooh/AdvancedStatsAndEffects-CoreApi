@@ -106,6 +106,22 @@ namespace AdvancedStatsAndEffects
 
         }
 
+        public class OnPlayerMovementChange
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnHealthChanged
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
         public List<OnPlayerCanUpdate> BeforePlayersUpdate { get; set; } = new List<OnPlayerCanUpdate>();
         public List<OnPlayersUpdate> AfterPlayersUpdate { get; set; } = new List<OnPlayersUpdate>();
         public List<OnCanCycle> BeforeCycle { get; set; } = new List<OnCanCycle>();        
@@ -114,6 +130,8 @@ namespace AdvancedStatsAndEffects
         public List<OnBotAdd> AfterBotAdd { get; set; } = new List<OnBotAdd>();
         public List<OnPlayerRespawn> PlayerRespawn { get; set; } = new List<OnPlayerRespawn>();
         public List<OnPlayerReset> PlayerReset { get; set; } = new List<OnPlayerReset>();
+        public List<OnPlayerMovementChange> PlayerMovementChange { get; set; } = new List<OnPlayerMovementChange>();
+        public List<OnHealthChanged> PlayerHealthChanged { get; set; } = new List<OnHealthChanged>();
         public ConcurrentDictionary<string, List<OnStatCycle>> StartStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatCycle>>();
         public ConcurrentDictionary<string, List<OnStatCycle>> EndStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatCycle>>();
         public ConcurrentDictionary<string, List<OnStatBeforeCycle>> StatBeforeCycle { get; set; } = new ConcurrentDictionary<string, List<OnStatBeforeCycle>>();
