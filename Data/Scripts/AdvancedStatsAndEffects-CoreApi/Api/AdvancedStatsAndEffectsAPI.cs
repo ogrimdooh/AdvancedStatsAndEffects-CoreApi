@@ -190,6 +190,15 @@ namespace AdvancedStatsAndEffects
         [ProtoMember(10)]
         public byte StacksWhenRemove { get; set; }
 
+        [ProtoMember(11)]
+        public bool IsInverseTime { get; set; }
+
+        [ProtoMember(12)]
+        public int MaxInverseTime { get; set; }
+
+        [ProtoMember(13)]
+        public bool SelfRemoveWhenMaxInverse { get; set; }
+
     }
 
     [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
@@ -379,6 +388,7 @@ namespace AdvancedStatsAndEffects
         private static Func<long, MyDefinitionId, bool> _DoPlayerConsume;
         private static Func<long, string, byte> _GetPlayerFixedStatStack;
         private static Func<long, string, long> _GetPlayerFixedStatRemainTime;
+        private static Func<long, string, long, bool> _SetPlayerFixedStatRemainTime;
         private static Func<long, int> _GetPlayerFixedStatUpdateHash;
 
         /// <summary>
@@ -411,6 +421,14 @@ namespace AdvancedStatsAndEffects
         public static long GetPlayerFixedStatRemainTime(long playerId, string fixedStat)
         {
             return _GetPlayerFixedStatRemainTime?.Invoke(playerId, fixedStat) ?? 0;
+        }
+
+        /// <summary>
+        /// Set the remain timer of a fixed stat in the player
+        /// </summary>
+        public static bool SetPlayerFixedStatRemainTime(long playerId, string fixedStat, long value)
+        {
+            return _SetPlayerFixedStatRemainTime?.Invoke(playerId, fixedStat, value) ?? false;
         }
 
         /// <summary>
@@ -710,6 +728,7 @@ namespace AdvancedStatsAndEffects
                         _DoPlayerConsume = (Func<long, MyDefinitionId, bool>)ModAPIMethods["DoPlayerConsume"];
                         _GetPlayerFixedStatStack = (Func<long, string, byte>)ModAPIMethods["GetPlayerFixedStatStack"];
                         _GetPlayerFixedStatRemainTime = (Func<long, string, long>)ModAPIMethods["GetPlayerFixedStatRemainTime"];
+                        _SetPlayerFixedStatRemainTime = (Func<long, string, long, bool>)ModAPIMethods["SetPlayerFixedStatRemainTime"];
                         _GetPlayerFixedStatUpdateHash = (Func<long, int>)ModAPIMethods["GetPlayerFixedStatUpdateHash"];
 
                         if (m_onRegisteredAction != null)

@@ -331,9 +331,16 @@ namespace AdvancedStatsAndEffects
                                 {
                                     FixedStatStack[id] -= stacks;
                                     doRemove = FixedStatStack[id] <= 0;
-                                    if (!doRemove && fixedStat.CanSelfRemove)
+                                    if (!doRemove)
                                     {
-                                        FixedStatTimer[id] = fixedStat.TimeToSelfRemove;
+                                        if (fixedStat.CanSelfRemove)
+                                        {
+                                            FixedStatTimer[id] = fixedStat.TimeToSelfRemove;
+                                        }
+                                        else if (fixedStat.IsInverseTime)
+                                        {
+                                            FixedStatTimer[id] = 0;
+                                        }
                                     }
                                 }
                                 if (doRemove)
@@ -343,7 +350,7 @@ namespace AdvancedStatsAndEffects
                             {
                                 currentValue &= ~targetValue[fixedStat.Index];
                                 Stats[statName].Value = currentValue;
-                                if (fixedStat.CanSelfRemove)
+                                if (fixedStat.CanSelfRemove || fixedStat.IsInverseTime)
                                 {
                                     if (FixedStatTimer.ContainsKey(id))
                                         FixedStatTimer.Remove(id);
@@ -384,6 +391,10 @@ namespace AdvancedStatsAndEffects
                         if (fixedStat.CanSelfRemove)
                         {
                             FixedStatTimer[id] = fixedStat.TimeToSelfRemove;
+                        }
+                        else if (fixedStat.IsInverseTime && !FixedStatTimer.ContainsKey(id))
+                        {
+                            FixedStatTimer[id] = 0;
                         }
                         RefreshUpdateHash();
                     }
@@ -619,14 +630,31 @@ namespace AdvancedStatsAndEffects
                 {
                     if (FixedStatTimer.ContainsKey(fixedStat))
                     {
-                        FixedStatTimer[fixedStat] -= cicleType;
-                        if (FixedStatTimer[fixedStat] <= 0)
+                        if (fixedStatData.CanSelfRemove)
                         {
-                            RemoveFixedEffect(fixedStat, Math.Max(fixedStatData.StacksWhenRemove, (byte)1), fixedStatData.CompleteRemove);
+                            FixedStatTimer[fixedStat] -= cicleType;
+                            if (FixedStatTimer[fixedStat] <= 0)
+                            {
+                                RemoveFixedEffect(fixedStat, Math.Max(fixedStatData.StacksWhenRemove, (byte)1), fixedStatData.CompleteRemove);
+                            }
+                            else
+                            {
+                                RefreshUpdateHash();
+                            }
                         }
-                        else
+                        else if (fixedStatData.IsInverseTime)
                         {
-                            RefreshUpdateHash();
+                            FixedStatTimer[fixedStat] += cicleType;
+                            if (FixedStatTimer[fixedStat] > fixedStatData.MaxInverseTime)
+                                FixedStatTimer[fixedStat] = fixedStatData.MaxInverseTime;
+                            if (FixedStatTimer[fixedStat] == fixedStatData.MaxInverseTime && fixedStatData.SelfRemoveWhenMaxInverse)
+                            {
+                                RemoveFixedEffect(fixedStat, Math.Max(fixedStatData.StacksWhenRemove, (byte)1), fixedStatData.CompleteRemove);
+                            }
+                            else
+                            {
+                                RefreshUpdateHash();
+                            }
                         }
                     }
                 }

@@ -57,6 +57,7 @@ namespace AdvancedStatsAndEffects
             ["DoPlayerConsume"] = new Func<long, MyDefinitionId, bool>(DoPlayerConsume),
             ["GetPlayerFixedStatStack"] = new Func<long, string, byte>(GetPlayerFixedStatStack),
             ["GetPlayerFixedStatRemainTime"] = new Func<long, string, long>(GetPlayerFixedStatRemainTime),
+            ["SetPlayerFixedStatRemainTime"] = new Func<long, string, long, bool>(SetPlayerFixedStatRemainTime),
             ["GetPlayerFixedStatUpdateHash"] = new Func<long, int>(GetPlayerFixedStatUpdateHash)
         };
 
@@ -108,6 +109,26 @@ namespace AdvancedStatsAndEffects
                 }
             }
             return 0;
+        }
+
+        public static bool SetPlayerFixedStatRemainTime(long playerId, string fixedStat, long value)
+        {
+            var player = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+            if (player != null)
+            {
+                if (player.FixedStatTimer.ContainsKey(fixedStat))
+                {
+                    var fixedStatData = AdvancedStatsAndEffectsSession.Static.GetFixedStat(fixedStat);
+                    if (fixedStatData != null)
+                    {
+                        var max = fixedStatData.TimeToSelfRemove;
+                        if (fixedStatData.IsInverseTime)
+                            max = fixedStatData.MaxInverseTime;
+                        player.FixedStatTimer[fixedStat] = Math.Max(0, Math.Min(value, max));
+                    }
+                }
+            }
+            return false;
         }
 
         public static long GetGameTime()
