@@ -126,7 +126,7 @@ namespace AdvancedStatsAndEffects
         public List<OnPlayersUpdate> AfterPlayersUpdate { get; set; } = new List<OnPlayersUpdate>();
         public List<OnCanCycle> BeforeCycle { get; set; } = new List<OnCanCycle>();        
         public ConcurrentDictionary<string, List<OnFixedStatCycle>> FixedStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnFixedStatCycle>>();
-        public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();        
+        public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();
         public List<OnBotAdd> AfterBotAdd { get; set; } = new List<OnBotAdd>();
         public List<OnPlayerRespawn> PlayerRespawn { get; set; } = new List<OnPlayerRespawn>();
         public List<OnPlayerReset> PlayerReset { get; set; } = new List<OnPlayerReset>();

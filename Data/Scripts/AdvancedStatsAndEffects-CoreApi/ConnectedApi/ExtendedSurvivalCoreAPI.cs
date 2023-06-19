@@ -2,6 +2,7 @@
 using Sandbox.Game;
 using Sandbox.Game.Entities;
 using Sandbox.ModAPI;
+using Sandbox.ModAPI.Weapons;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -229,6 +230,9 @@ namespace AdvancedStatsAndEffects
         [ProtoMember(2)]
         public SerializableDefinitionId CurrentAmmoMagazineId { get; set; }
 
+        [ProtoMember(3)]
+        public int CurrentMagazineAmmunition;
+
     }
 
     public class ExtendedSurvivalCoreAPI
@@ -262,11 +266,13 @@ namespace AdvancedStatsAndEffects
         private static Func<Guid, MyDefinitionId, string> _GetItemInfoByItemType;
         private static Func<Guid, string, string> _GetItemInfoByCategory;
         private static Action<string> _AddTreeDropLoot;
-        private static Func<long, string> _GetHandheldGunInfo;
+        private static Func<long, KeyValuePair<IMyAutomaticRifleGun, string>?> _GetHandheldGunInfo;
+        private static Func<Action<IMyAutomaticRifleGun, int, MyDefinitionId, IMyInventory>, int, bool> _AddOnHandheldGunReloadCallback;
         private static Action<Guid, bool, bool, float> _SetInventoryObserverSpoilStatus;
         private static Func<long, IMySlimBlock[]> _GetUnderwaterCollectors;
         private static Func<long, IMySlimBlock[]> _GetOffwaterCollectors;
         private static Func<long, List<IMySlimBlock>> _GetWaterSolidificators;
+        private static Func<long, MyObjectBuilderType, string, List<IMySlimBlock>> _GetGridBlocks;
         private static Action<Guid, Action<Guid, MyInventory, IMyEntity, TimeSpan>> _RegisterInventoryObserverUpdateCallback;
         private static Action<Guid, Action<Guid, MyInventory, MyPhysicalInventoryItem, MyFixedPoint>> _RegisterInventoryObserverAfterContentsAddedCallback;
         private static Action<Guid, Action<Guid, MyInventory, MyPhysicalInventoryItem, MyFixedPoint>> _RegisterInventoryObserverAfterContentsRemovedCallback;
@@ -278,6 +284,8 @@ namespace AdvancedStatsAndEffects
         private static Func<string, bool> _AddItemToShop;
         private static Func<MyDefinitionId, int, bool> _ChangeItemRarity;
         private static Action<ulong> _MarkAsAllItensLoaded;
+        private static Func<bool> _IsMarkAsAllItensLoaded;
+        private static Action<Action> _AddCallBackWhenMarkAsAllItensLoaded;
 
         /// <summary>
         /// Returns true if the version is compatibile with the API Backend, this is automatically called
@@ -515,6 +523,22 @@ namespace AdvancedStatsAndEffects
         }
 
         /// <summary>
+        /// Is mark as all itens loaded executed
+        /// </summary>
+        public static bool IsMarkAsAllItensLoaded()
+        {
+            return _IsMarkAsAllItensLoaded?.Invoke() ?? false;
+        }
+
+        /// <summary>
+        /// Add callback to when mark as all itens loaded executed
+        /// </summary>
+        public static void AddCallBackWhenMarkAsAllItensLoaded(Action callback)
+        {
+            _AddCallBackWhenMarkAsAllItensLoaded?.Invoke(callback);
+        }
+
+        /// <summary>
         /// Change a rarity of item to be used at trading stations
         /// </summary>
         public static bool ChangeItemRarity(MyDefinitionId id, ItemRarity rarity)
@@ -523,16 +547,26 @@ namespace AdvancedStatsAndEffects
         }
 
         /// <summary>
+        /// Add a callback to reload hand guns
+        /// </summary>
+        public static bool AddOnHandheldGunReloadCallback(Action<IMyAutomaticRifleGun, int, MyDefinitionId, IMyInventory> callback, int priority)
+        {
+            return _AddOnHandheldGunReloadCallback?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
         /// Get a list of itens based in gas Id
         /// </summary>
-        public static HandheldGunInfo GetHandheldGunInfo(long id)
+        public static HandheldGunInfo GetHandheldGunInfo(long id, out IMyAutomaticRifleGun gun)
         {
+            gun = null;
             var data = _GetHandheldGunInfo?.Invoke(id);
-            if (!string.IsNullOrEmpty(data))
+            if (data != null && !string.IsNullOrEmpty(data.Value.Value))
             {
                 try
                 {
-                    var itemInfo = MyAPIGateway.Utilities.SerializeFromXML<HandheldGunInfo>(data);
+                    gun = data.Value.Key;
+                    var itemInfo = MyAPIGateway.Utilities.SerializeFromXML<HandheldGunInfo>(data.Value.Value);
                     return itemInfo;
                 }
                 catch (Exception e)
@@ -573,6 +607,14 @@ namespace AdvancedStatsAndEffects
         public static List<IMySlimBlock> GetWaterSolidificators(long gridId)
         {
             return _GetWaterSolidificators?.Invoke(gridId);
+        }
+
+        /// <summary>
+        /// return a list of blocks with type e/or subtype
+        /// </summary>
+        public static List<IMySlimBlock> GetGridBlocks(long gridId, MyObjectBuilderType type, string subType)
+        {
+            return _GetGridBlocks?.Invoke(gridId, type, subType);
         }
 
         /// <summary>
@@ -725,11 +767,13 @@ namespace AdvancedStatsAndEffects
                         _GetItemInfoByItemType = (Func<Guid, MyDefinitionId, string>)ModAPIMethods["GetItemInfoByItemType"];
                         _GetItemInfoByCategory = (Func<Guid, string, string>)ModAPIMethods["GetItemInfoByCategory"];
                         _AddTreeDropLoot = (Action<string>)ModAPIMethods["AddTreeDropLoot"];
-                        _GetHandheldGunInfo = (Func<long, string>)ModAPIMethods["GetHandheldGunInfo"];
+                        _GetHandheldGunInfo = (Func<long, KeyValuePair<IMyAutomaticRifleGun, string>?>)ModAPIMethods["GetHandheldGunInfo"];
+                        _AddOnHandheldGunReloadCallback = (Func<Action<IMyAutomaticRifleGun, int, MyDefinitionId, IMyInventory>, int, bool>)ModAPIMethods["AddOnHandheldGunReloadCallback"];
                         _SetInventoryObserverSpoilStatus = (Action<Guid, bool, bool, float>)ModAPIMethods["SetInventoryObserverSpoilStatus"];
                         _GetUnderwaterCollectors = (Func<long, IMySlimBlock[]>)ModAPIMethods["GetUnderwaterCollectors"];
                         _GetOffwaterCollectors = (Func<long, IMySlimBlock[]>)ModAPIMethods["GetOffwaterCollectors"];
                         _GetWaterSolidificators = (Func<long, List<IMySlimBlock>>)ModAPIMethods["GetWaterSolidificators"];
+                        _GetGridBlocks = (Func<long, MyObjectBuilderType, string, List<IMySlimBlock>>)ModAPIMethods["GetGridBlocks"];
                         _RegisterInventoryObserverUpdateCallback = (Action<Guid, Action<Guid, MyInventory, IMyEntity, TimeSpan>>)ModAPIMethods["RegisterInventoryObserverUpdateCallback"];
                         _RegisterInventoryObserverAfterContentsAddedCallback = (Action<Guid, Action<Guid, MyInventory, MyPhysicalInventoryItem, MyFixedPoint>>)ModAPIMethods["RegisterInventoryObserverAfterContentsAddedCallback"];
                         _RegisterInventoryObserverAfterContentsRemovedCallback = (Action<Guid, Action<Guid, MyInventory, MyPhysicalInventoryItem, MyFixedPoint>>)ModAPIMethods["RegisterInventoryObserverAfterContentsRemovedCallback"];
@@ -741,6 +785,8 @@ namespace AdvancedStatsAndEffects
                         _AddItemToShop = (Func<string, bool>)ModAPIMethods["AddItemToShop"];
                         _ChangeItemRarity = (Func<MyDefinitionId, int, bool>)ModAPIMethods["ChangeItemRarity"];
                         _MarkAsAllItensLoaded = (Action<ulong>)ModAPIMethods["MarkAsAllItensLoaded"];
+                        _IsMarkAsAllItensLoaded = (Func<bool>)ModAPIMethods["IsMarkAsAllItensLoaded"];
+                        _AddCallBackWhenMarkAsAllItensLoaded = (Action<Action>)ModAPIMethods["AddCallBackWhenMarkAsAllItensLoaded"];
 
                         if (m_onRegisteredAction != null)
                             m_onRegisteredAction();
