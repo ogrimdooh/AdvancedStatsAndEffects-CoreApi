@@ -380,6 +380,7 @@ namespace AdvancedStatsAndEffects
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool> _AddOnHealthChanged;
         private static Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddVirtualStatAbsorptionCicle;
         private static Func<Action<long, IMyCharacter>, int, bool> _AddAfterBotAdd;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId>, int, bool> _AddAfterPlayerConsume;
         private static Func<long, string, byte, bool, bool> _AddFixedEffect;
         private static Func<long, string, byte, bool, bool> _RemoveFixedEffect;
         private static Func<long, bool> _ClearOverTimeConsumable;
@@ -486,6 +487,15 @@ namespace AdvancedStatsAndEffects
         public static bool AddAfterBotAdd(Action<long, IMyCharacter> callback, int priority)
         {
             return _AddAfterBotAdd?.Invoke(callback, priority) ?? false;
+        }
+
+
+        /// <summary>
+        /// Add a callback after player consume a consumable
+        /// </summary>
+        public static bool AddAfterPlayerConsume(Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId> callback, int priority)
+        {
+            return _AddAfterPlayerConsume?.Invoke(callback, priority) ?? false;
         }
 
         /// <summary>
@@ -720,6 +730,7 @@ namespace AdvancedStatsAndEffects
                         _AddOnMovementStateChanged = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum>, int, bool>)ModAPIMethods["AddOnMovementStateChanged"];
                         _AddOnHealthChanged = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool>)ModAPIMethods["AddOnHealthChanged"];
                         _AddAfterBotAdd = (Func<Action<long, IMyCharacter>, int, bool>)ModAPIMethods["AddAfterBotAdd"];
+                        _AddAfterPlayerConsume = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId>, int, bool>)ModAPIMethods["AddAfterPlayerConsume"];
                         _AddFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["AddFixedEffect"];
                         _RemoveFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["RemoveFixedEffect"];
                         _ClearOverTimeConsumable = (Func<long, bool>)ModAPIMethods["ClearOverTimeConsumable"];

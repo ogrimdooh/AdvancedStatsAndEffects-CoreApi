@@ -90,6 +90,14 @@ namespace AdvancedStatsAndEffects
 
         }
 
+        public class OnPlayerConsume
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
         public class OnPlayerRespawn
         {
 
@@ -128,6 +136,7 @@ namespace AdvancedStatsAndEffects
         public ConcurrentDictionary<string, List<OnFixedStatCycle>> FixedStatCycle { get; set; } = new ConcurrentDictionary<string, List<OnFixedStatCycle>>();
         public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();
         public List<OnBotAdd> AfterBotAdd { get; set; } = new List<OnBotAdd>();
+        public List<OnPlayerConsume> AfterPlayerConsume { get; set; } = new List<OnPlayerConsume>();
         public List<OnPlayerRespawn> PlayerRespawn { get; set; } = new List<OnPlayerRespawn>();
         public List<OnPlayerReset> PlayerReset { get; set; } = new List<OnPlayerReset>();
         public List<OnPlayerMovementChange> PlayerMovementChange { get; set; } = new List<OnPlayerMovementChange>();

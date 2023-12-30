@@ -289,6 +289,13 @@ namespace AdvancedStatsAndEffects
             }
             DoProcessOverTimeEffects(uniqueId, consumableInfo.OverTimeEffects);
             DoProcessFixedEffects(consumableInfo.FixedEffects);
+            foreach (var afterPlayerConsume in AdvancedStatsAndEffectsSession.Static.AfterPlayerConsume)
+            {
+                if (afterPlayerConsume.Action != null)
+                {
+                    afterPlayerConsume.Action(PlayerId, Entity, StatComponent, consumableInfo.DefinitionId);
+                }
+            }
         }
 
         public bool HasFixedEffect(string id)
