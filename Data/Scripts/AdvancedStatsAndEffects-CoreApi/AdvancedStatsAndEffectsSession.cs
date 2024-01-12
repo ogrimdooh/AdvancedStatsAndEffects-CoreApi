@@ -98,6 +98,14 @@ namespace AdvancedStatsAndEffects
 
         }
 
+        public class OnBeginConfigureCharacter
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
         public class OnPlayerRespawn
         {
 
@@ -137,6 +145,7 @@ namespace AdvancedStatsAndEffects
         public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();
         public List<OnBotAdd> AfterBotAdd { get; set; } = new List<OnBotAdd>();
         public List<OnPlayerConsume> AfterPlayerConsume { get; set; } = new List<OnPlayerConsume>();
+        public List<OnBeginConfigureCharacter> BeginConfigureCharacter { get; set; } = new List<OnBeginConfigureCharacter>();
         public List<OnPlayerRespawn> PlayerRespawn { get; set; } = new List<OnPlayerRespawn>();
         public List<OnPlayerReset> PlayerReset { get; set; } = new List<OnPlayerReset>();
         public List<OnPlayerMovementChange> PlayerMovementChange { get; set; } = new List<OnPlayerMovementChange>();

@@ -13,6 +13,7 @@ namespace AdvancedStatsAndEffects
     {
 
         private PlayerData storeData = null;
+        private Dictionary<string, float> storeStats = null;
 
         public PlayerCharacterBodyController(IMyCharacter entity)
             : base(entity)
@@ -29,12 +30,18 @@ namespace AdvancedStatsAndEffects
                 {
                     LoadPlayerStat(stat);
                 }
-                if (hasDied && storeData != null)
+                foreach (var beginConfigureCharacter in AdvancedStatsAndEffectsSession.Static.BeginConfigureCharacter)
                 {
-
-
+                    if (beginConfigureCharacter.Action != null)
+                    {
+                        beginConfigureCharacter.Action(PlayerId, Entity, StatComponent, hasDied, storeStats);
+                    }
+                }
+                if (hasDied)
+                {
                     hasDied = false;
                     storeData = null;
+                    storeStats = null;
                 }
             }
         }
@@ -44,6 +51,17 @@ namespace AdvancedStatsAndEffects
             base.OnCharacterDied();
             hasDied = true;
             storeData = GetStoreData();
+            storeStats = GetStoreStats();
+        }
+
+        public Dictionary<string, float> GetStoreStats()
+        {
+            var stats = new Dictionary<string, float>();
+            foreach (var stat in Stats)
+            {
+                stats.Add(stat.Key, stat.Value.Value);
+            }
+            return stats;
         }
 
         public PlayerData GetStoreData()

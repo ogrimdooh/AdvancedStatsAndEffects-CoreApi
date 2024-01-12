@@ -50,6 +50,7 @@ namespace AdvancedStatsAndEffects
             ["AddOnHealthChanged"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool>(AddOnHealthChanged),
             ["AddAfterBotAdd"] = new Func<Action<long, IMyCharacter>, int, bool>(AddAfterBotAdd),
             ["AddAfterPlayerConsume"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId>, int, bool>(AddAfterPlayerConsume),
+            ["AddOnBeginConfigureCharacter"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>>, int, bool>(AddOnBeginConfigureCharacter),
             ["AddFixedEffect"] = new Func<long, string, byte, bool, bool>(AddFixedEffect),
             ["RemoveFixedEffect"] = new Func<long, string, byte, bool, bool>(RemoveFixedEffect),
             ["ClearOverTimeConsumable"] = new Func<long, bool>(ClearOverTimeConsumable),
@@ -163,6 +164,21 @@ namespace AdvancedStatsAndEffects
                     Priority = priority
                 });
                 AdvancedStatsAndEffectsSession.Static.AfterBotAdd.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool AddOnBeginConfigureCharacter(Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.BeginConfigureCharacter.Add(new AdvancedStatsAndEffectsSession.OnBeginConfigureCharacter()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.BeginConfigureCharacter.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
                 return true;
             }
             return false;
