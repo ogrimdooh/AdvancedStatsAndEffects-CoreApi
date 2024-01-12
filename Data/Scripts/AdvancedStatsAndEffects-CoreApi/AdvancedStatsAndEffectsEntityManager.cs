@@ -159,7 +159,11 @@ namespace AdvancedStatsAndEffects
                         var steamId = PlayerCharacters[character.EntityId].Player?.SteamUserId;
                         if (steamId.HasValue)
                         {
-                            PlayerCharacters[character.EntityId].LoadStoreData(AdvancedStatsAndEffectsStorage.Instance.GetPlayerData(steamId.Value));
+                            var data = AdvancedStatsAndEffectsStorage.Instance.GetPlayerData(steamId.Value);
+                            if (data != null)
+                                PlayerCharacters[character.EntityId].LoadStoreData(data);
+                            else
+                                PlayerCharacters[character.EntityId].ResetCharacterStats();
                         }
                         else
                         {

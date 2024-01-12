@@ -70,6 +70,17 @@ namespace AdvancedStatsAndEffects
             }
         }
 
+        public ulong[] GetSavedPlayers()
+        {
+            return Players.Select(x => x.SteamPlayerId).ToArray();
+        }
+
+        public void RemovePlayerData(params ulong[] steamPlayerIds)
+        {
+            CheckPlayers();
+            Players.RemoveAll(x => steamPlayerIds.Contains(x.SteamPlayerId));
+        }
+
         public PlayerData GetPlayerData(ulong steamPlayerId)
         {
             CheckPlayers();

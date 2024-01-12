@@ -199,6 +199,9 @@ namespace AdvancedStatsAndEffects
         [ProtoMember(13)]
         public bool SelfRemoveWhenMaxInverse { get; set; }
 
+        [ProtoMember(14)]
+        public bool IsPositive { get; set; }
+
     }
 
     [ProtoContract(SkipConstructor = true, UseProtoMembersOnly = true)]
@@ -380,8 +383,11 @@ namespace AdvancedStatsAndEffects
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool> _AddOnHealthChanged;
         private static Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddVirtualStatAbsorptionCicle;
         private static Func<Action<long, IMyCharacter>, int, bool> _AddAfterBotAdd;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool> _AddAfterCharacterDied;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId>, int, bool> _AddAfterPlayerConsume;
         private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>>, int, bool> _AddOnBeginConfigureCharacter;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool>, int, bool> _AddAfterRemoveFixedEffect;
+        private static Func<Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool>, int, bool> _AddAfterAddFixedEffect;
         private static Func<long, string, byte, bool, bool> _AddFixedEffect;
         private static Func<long, string, byte, bool, bool> _RemoveFixedEffect;
         private static Func<long, bool> _ClearOverTimeConsumable;
@@ -491,6 +497,14 @@ namespace AdvancedStatsAndEffects
         }
 
         /// <summary>
+        /// Add a callback after character dies
+        /// </summary>
+        public static bool AddAfterCharacterDied(Action<long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
+        {
+            return _AddAfterCharacterDied?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
         /// Add a callback after player consume a consumable
         /// </summary>
         public static bool AddAfterPlayerConsume(Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId> callback, int priority)
@@ -504,6 +518,22 @@ namespace AdvancedStatsAndEffects
         public static bool AddOnBeginConfigureCharacter(Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>> callback, int priority)
         {
             return _AddOnBeginConfigureCharacter?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after remove a fixed effect from a player
+        /// </summary>
+        public static bool AddAfterRemoveFixedEffect(Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool> callback, int priority)
+        {
+            return _AddAfterRemoveFixedEffect?.Invoke(callback, priority) ?? false;
+        }
+
+        /// <summary>
+        /// Add a callback after remove a fixed effect from a player
+        /// </summary>
+        public static bool AddAfterAddFixedEffect(Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool> callback, int priority)
+        {
+            return _AddAfterAddFixedEffect?.Invoke(callback, priority) ?? false;
         }
 
         /// <summary>
@@ -738,8 +768,11 @@ namespace AdvancedStatsAndEffects
                         _AddOnMovementStateChanged = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum>, int, bool>)ModAPIMethods["AddOnMovementStateChanged"];
                         _AddOnHealthChanged = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool>)ModAPIMethods["AddOnHealthChanged"];
                         _AddAfterBotAdd = (Func<Action<long, IMyCharacter>, int, bool>)ModAPIMethods["AddAfterBotAdd"];
+                        _AddAfterCharacterDied = (Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>)ModAPIMethods["AddAfterCharacterDied"];
                         _AddAfterPlayerConsume = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId>, int, bool>)ModAPIMethods["AddAfterPlayerConsume"];
                         _AddOnBeginConfigureCharacter = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>>, int, bool>)ModAPIMethods["AddOnBeginConfigureCharacter"];
+                        _AddAfterRemoveFixedEffect = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool>, int, bool>)ModAPIMethods["AddAfterRemoveFixedEffect"];
+                        _AddAfterAddFixedEffect = (Func<Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool>, int, bool>)ModAPIMethods["AddAfterAddFixedEffect"];
                         _AddFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["AddFixedEffect"];
                         _RemoveFixedEffect = (Func<long, string, byte, bool, bool>)ModAPIMethods["RemoveFixedEffect"];
                         _ClearOverTimeConsumable = (Func<long, bool>)ModAPIMethods["ClearOverTimeConsumable"];

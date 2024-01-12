@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using VRage;
+using VRage.Game;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -59,6 +60,14 @@ namespace AdvancedStatsAndEffects
             get
             {
                 return Entity.GetPlayer();
+            }
+        }
+
+        public ulong SteamUserId
+        {
+            get
+            {
+                return Player?.SteamUserId ?? 0;
             }
         }
 
@@ -182,6 +191,13 @@ namespace AdvancedStatsAndEffects
         protected virtual void OnCharacterDied()
         {
             Health.OnStatChanged -= Health_OnStatChanged;
+            foreach (var afterCharacterDied in AdvancedStatsAndEffectsSession.Static.AfterCharacterDied)
+            {
+                if (afterCharacterDied.Action != null)
+                {
+                    afterCharacterDied.Action(PlayerId, Entity, StatComponent);
+                }
+            }
         }
 
         protected DateTime lastTimeDead;
@@ -363,6 +379,13 @@ namespace AdvancedStatsAndEffects
                                         FixedStatTimer.Remove(id);
                                 }
                             }
+                            foreach (var afterRemoveFixedEffect in AdvancedStatsAndEffectsSession.Static.AfterRemoveFixedEffect)
+                            {
+                                if (afterRemoveFixedEffect.Action != null)
+                                {
+                                    afterRemoveFixedEffect.Action(PlayerId, Entity, StatComponent, id, stacks, max);
+                                }
+                            }
                             RefreshUpdateHash();
                         }
                     }
@@ -381,19 +404,30 @@ namespace AdvancedStatsAndEffects
                     var targetValue = FixedStatsConstants.GetGroupValues(fixedStat.Group);
                     if (targetValue != null && targetValue.Length > fixedStat.Index && fixedStat.Index >= 0)
                     {
+                        bool needToShow = false;
+                        var msg = $"You just got [{fixedStat.Name}]";
                         var currentValue = (int)Stats[statName].Value;
                         if ((currentValue & targetValue[fixedStat.Index]) == 0)
                         {
                             currentValue |= targetValue[fixedStat.Index];
                             Stats[statName].Value = currentValue;
+                            needToShow = true;
                         }
                         if (fixedStat.CanStack)
                         {
                             if (FixedStatStack.ContainsKey(id))
+                            {
+                                var oldValue = FixedStatStack[id];
                                 FixedStatStack[id] += max ? fixedStat.MaxStacks : stacks;
+                                needToShow = oldValue != FixedStatStack[id];
+                            }
                             else
+                            {
                                 FixedStatStack[id] = max ? fixedStat.MaxStacks : stacks;
+                                needToShow = true;
+                            }
                             FixedStatStack[id] = Math.Min(FixedStatStack[id], fixedStat.MaxStacks);
+                            msg += $" [{FixedStatStack[id]}]";
                         }
                         if (fixedStat.CanSelfRemove)
                         {
@@ -402,6 +436,23 @@ namespace AdvancedStatsAndEffects
                         else if (fixedStat.IsInverseTime && !FixedStatTimer.ContainsKey(id))
                         {
                             FixedStatTimer[id] = 0;
+                        }
+                        foreach (var afterAddFixedEffect in AdvancedStatsAndEffectsSession.Static.AfterAddFixedEffect)
+                        {
+                            if (afterAddFixedEffect.Action != null)
+                            {
+                                afterAddFixedEffect.Action(PlayerId, Entity, StatComponent, id, stacks, max);
+                            }
+                        }
+                        if (SteamUserId != 0 && needToShow)
+                        {
+                            msg += ".";
+                            AdvancedStatsAndEffectsCommandController.Static.SendMessage(
+                                SteamUserId,
+                                msg,
+                                fixedStat.IsPositive ? MyFontEnum.Green : MyFontEnum.Red,
+                                7500
+                            );
                         }
                         RefreshUpdateHash();
                     }

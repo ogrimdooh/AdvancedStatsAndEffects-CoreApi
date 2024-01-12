@@ -43,14 +43,17 @@ namespace AdvancedStatsAndEffects
             ["AddBeforeCycleCallback"] = new Func<Func<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddBeforeCycleCallback),
             ["AddAfterCycleCallback"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterCycleCallback),
             ["AddFixedStatCycleCallback"] = new Func<string, Action<string, byte, long, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddFixedStatCycleCallback),
-            ["AddVirtualStatAbsorptionCicle"] = new Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddVirtualStatAbsorptionCicle),            
+            ["AddVirtualStatAbsorptionCicle"] = new Func<string, Action<string, float, MyDefinitionId, long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddVirtualStatAbsorptionCicle),
             ["AddAfterPlayerReset"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterPlayerReset),
             ["AddAfterPlayerRespawn"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool>, int, bool>(AddAfterPlayerRespawn),
             ["AddOnMovementStateChanged"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyCharacterMovementEnum, MyCharacterMovementEnum>, int, bool>(AddOnMovementStateChanged),
             ["AddOnHealthChanged"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, float, float, object>, int, bool>(AddOnHealthChanged),
             ["AddAfterBotAdd"] = new Func<Action<long, IMyCharacter>, int, bool>(AddAfterBotAdd),
             ["AddAfterPlayerConsume"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, MyDefinitionId>, int, bool>(AddAfterPlayerConsume),
+            ["AddAfterCharacterDied"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent>, int, bool>(AddAfterCharacterDied),
             ["AddOnBeginConfigureCharacter"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, bool, Dictionary<string, float>>, int, bool>(AddOnBeginConfigureCharacter),
+            ["AddAfterRemoveFixedEffect"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool>, int, bool>(AddAfterRemoveFixedEffect),
+            ["AddAfterAddFixedEffect"] = new Func<Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool>, int, bool>(AddAfterAddFixedEffect),
             ["AddFixedEffect"] = new Func<long, string, byte, bool, bool>(AddFixedEffect),
             ["RemoveFixedEffect"] = new Func<long, string, byte, bool, bool>(RemoveFixedEffect),
             ["ClearOverTimeConsumable"] = new Func<long, bool>(ClearOverTimeConsumable),
@@ -179,6 +182,51 @@ namespace AdvancedStatsAndEffects
                     Priority = priority
                 });
                 AdvancedStatsAndEffectsSession.Static.BeginConfigureCharacter.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool AddAfterRemoveFixedEffect(Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.AfterRemoveFixedEffect.Add(new AdvancedStatsAndEffectsSession.OnAfterRemoveFixedEffect()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.AfterRemoveFixedEffect.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool AddAfterAddFixedEffect(Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.AfterAddFixedEffect.Add(new AdvancedStatsAndEffectsSession.OnAfterAddFixedEffect()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.AfterAddFixedEffect.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
+                return true;
+            }
+            return false;
+        }
+
+        public static bool AddAfterCharacterDied(Action<long, IMyCharacter, MyCharacterStatComponent> callback, int priority)
+        {
+            if (callback != null)
+            {
+                AdvancedStatsAndEffectsSession.Static.AfterCharacterDied.Add(new AdvancedStatsAndEffectsSession.OnAfterCharacterDied()
+                {
+                    Action = callback,
+                    Priority = priority
+                });
+                AdvancedStatsAndEffectsSession.Static.AfterCharacterDied.Sort((x, y) => x.Priority.CompareTo(y.Priority) * -1);
                 return true;
             }
             return false;

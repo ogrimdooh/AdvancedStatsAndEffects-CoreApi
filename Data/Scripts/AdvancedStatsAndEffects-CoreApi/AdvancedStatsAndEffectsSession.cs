@@ -90,6 +90,30 @@ namespace AdvancedStatsAndEffects
 
         }
 
+        public class OnAfterAddFixedEffect
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnAfterCharacterDied
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
+        public class OnAfterRemoveFixedEffect
+        {
+
+            public Action<long, IMyCharacter, MyCharacterStatComponent, string, byte, bool> Action { get; set; }
+            public int Priority { get; set; }
+
+        }
+
         public class OnPlayerConsume
         {
 
@@ -145,7 +169,10 @@ namespace AdvancedStatsAndEffects
         public List<OnCycle> AfterCycle { get; set; } = new List<OnCycle>();
         public List<OnBotAdd> AfterBotAdd { get; set; } = new List<OnBotAdd>();
         public List<OnPlayerConsume> AfterPlayerConsume { get; set; } = new List<OnPlayerConsume>();
+        public List<OnAfterAddFixedEffect> AfterAddFixedEffect { get; set; } = new List<OnAfterAddFixedEffect>();
+        public List<OnAfterRemoveFixedEffect> AfterRemoveFixedEffect { get; set; } = new List<OnAfterRemoveFixedEffect>();
         public List<OnBeginConfigureCharacter> BeginConfigureCharacter { get; set; } = new List<OnBeginConfigureCharacter>();
+        public List<OnAfterCharacterDied> AfterCharacterDied { get; set; } = new List<OnAfterCharacterDied>();        
         public List<OnPlayerRespawn> PlayerRespawn { get; set; } = new List<OnPlayerRespawn>();
         public List<OnPlayerReset> PlayerReset { get; set; } = new List<OnPlayerReset>();
         public List<OnPlayerMovementChange> PlayerMovementChange { get; set; } = new List<OnPlayerMovementChange>();
@@ -260,14 +287,12 @@ namespace AdvancedStatsAndEffects
 
             if (!IsDedicated)
             {
-                MyAPIGateway.Utilities.MessageEntered += OnMessageEntered;
                 MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(NETWORK_ID_STATSSYSTEM, ClientUpdateMsgHandler);
             }
 
             if (IsServer)
             {
 
-                MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(NETWORK_ID_COMMANDS, CommandsMsgHandler);
                 MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(NETWORK_ID_DEFINITIONS, ClientDefinitionsUpdateServerMsgHandler);
 
                 var stats = MyDefinitionManager.Static.GetDefinitionsOfType<MyEntityStatDefinition>();
@@ -307,9 +332,6 @@ namespace AdvancedStatsAndEffects
             if (!IsDedicated)
                 MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(NETWORK_ID_STATSSYSTEM, ClientUpdateMsgHandler);
 
-            if (IsServer)
-                MyAPIGateway.Multiplayer.UnregisterSecureMessageHandler(NETWORK_ID_COMMANDS, CommandsMsgHandler);
-
             base.UnloadData();
         }
 
@@ -342,30 +364,6 @@ namespace AdvancedStatsAndEffects
             { SETTINGS_COMMAND_PLAYER_RESETSTATUS, new KeyValuePair<int, bool>(1, true) }
         };
 
-        private void OnMessageEntered(string messageText, ref bool sendToOthers)
-        {
-            sendToOthers = true;
-            if (!messageText.StartsWith("/")) return;
-            var words = messageText.Trim().ToLower().Replace("/", "").Split(' ');
-            if (words.Length > 0)
-            {
-                if (VALID_COMMANDS.ContainsKey(words[0]))
-                {
-                    if ((!VALID_COMMANDS[words[0]].Value && words.Length == VALID_COMMANDS[words[0]].Key) ||
-                        (VALID_COMMANDS[words[0]].Value && words.Length >= VALID_COMMANDS[words[0]].Key))
-                    {
-                        sendToOthers = false;
-                        Command cmd = new Command(MyAPIGateway.Multiplayer.MyId, words);
-                        string message = MyAPIGateway.Utilities.SerializeToXML<Command>(cmd);
-                        MyAPIGateway.Multiplayer.SendMessageToServer(
-                            NETWORK_ID_COMMANDS,
-                            Encoding.Unicode.GetBytes(message)
-                        );
-                    }
-                }
-            }
-        }
-
         private void ClientDefinitionsUpdateServerMsgHandler(ushort netId, byte[] data, ulong steamId, bool fromServer)
         {
             try
@@ -394,95 +392,6 @@ namespace AdvancedStatsAndEffects
 
                 }
 
-            }
-            catch (Exception ex)
-            {
-                AdvancedStatsAndEffectsLogging.Instance.LogError(GetType(), ex);
-            }
-        }
-
-        private void DoCommand_Settings(string name, string value)
-        {
-            AdvancedStatsAndEffectsSettings.Instance.SetConfigValue(name, value);
-        }
-
-        private void DoCommand_PlayerStat(string name, string value, string player, ulong steamId)
-        {
-            PlayerCharacterBodyController playerChar = null;
-            if (!string.IsNullOrWhiteSpace(player))
-            {
-                playerChar = AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.Values.FirstOrDefault(x => x.Player?.DisplayName.CompareTo(player) == 0);
-            }
-            else
-            {
-                playerChar = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacterBySteamId(steamId);
-            }
-            if (playerChar != null)
-            {
-                float targetValue;
-                if (float.TryParse(value, out targetValue))
-                {
-                    playerChar.SetCharacterStatValue(name, targetValue);
-                }
-            }
-        }
-
-        private void DoCommand_PlayerReset(string player, ulong steamId)
-        {
-            PlayerCharacterBodyController playerChar = null;
-            if (!string.IsNullOrWhiteSpace(player))
-            {
-                playerChar = AdvancedStatsAndEffectsEntityManager.Instance.PlayerCharacters.Values.FirstOrDefault(x => x.Player?.DisplayName.CompareTo(player) == 0);
-            }
-            else
-            {
-                playerChar = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacterBySteamId(steamId);
-            }
-            if (playerChar != null)
-            {
-                playerChar.ResetCharacterStats();
-            }
-        }
-
-        private void CommandsMsgHandler(ushort netId, byte[] data, ulong steamId, bool fromServer)
-        {
-            try
-            {
-                var message = Encoding.Unicode.GetString(data);
-                var mCommandData = MyAPIGateway.Utilities.SerializeFromXML<Command>(message);
-                if (MyAPIGateway.Session.IsUserAdmin(steamId))
-                {
-                    if (VALID_COMMANDS.ContainsKey(mCommandData.content[0]))
-                    {
-                        if ((!VALID_COMMANDS[mCommandData.content[0]].Value && mCommandData.content.Length == VALID_COMMANDS[mCommandData.content[0]].Key) ||
-                            (VALID_COMMANDS[mCommandData.content[0]].Value && mCommandData.content.Length >= VALID_COMMANDS[mCommandData.content[0]].Key))
-                        {
-                            switch (mCommandData.content[0])
-                            {
-                                case SETTINGS_COMMAND:
-                                    DoCommand_Settings(
-                                        mCommandData.content[1],
-                                        mCommandData.content[2]
-                                    );
-                                    break;
-                                case SETTINGS_COMMAND_PLAYER_STATUS:
-                                    DoCommand_PlayerStat(
-                                        mCommandData.content[1],
-                                        mCommandData.content[2],
-                                        mCommandData.content.Length >= 4 ? mCommandData.content[3] : null,
-                                        mCommandData.sender
-                                    );
-                                    break;
-                                case SETTINGS_COMMAND_PLAYER_RESETSTATUS:
-                                    DoCommand_PlayerReset(
-                                        mCommandData.content.Length >= 2 ? mCommandData.content[1] : null,
-                                        mCommandData.sender
-                                    );
-                                    break;
-                            }
-                        }
-                    }
-                }
             }
             catch (Exception ex)
             {
