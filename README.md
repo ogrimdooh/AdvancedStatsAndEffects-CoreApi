@@ -1,9 +1,8 @@
-# AI Logistics Automation
+# Advanced Stats & Effects : Mod API
 
-This mod adds blocks that allow you to configure Inventory Management and Production Queues without the need for scripts.
+This is a mod for Space Engineers that aims to allow you to easily create custom stats and effects for other mods.
 
 # Complete information
 
-I set up a wiki and a discord to keep discussions, roadmap information and bug reporting.
-https://www.wikiful.com/@ogrimdooh/ogrimdooh-se-mods/ai-logistics-automation
+I set up a discord to keep discussions, roadmap information and bug reporting.
 https://discord.gg/rTd2P6pbEu
