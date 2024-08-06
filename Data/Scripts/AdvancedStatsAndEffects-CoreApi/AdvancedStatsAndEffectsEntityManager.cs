@@ -1,6 +1,8 @@
-﻿using Sandbox.Game;
+﻿using Sandbox.Definitions;
+using Sandbox.Game;
 using Sandbox.Game.Components;
 using Sandbox.Game.Entities;
+using Sandbox.Game.Entities.Blocks;
 using Sandbox.ModAPI;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,16 +25,19 @@ namespace AdvancedStatsAndEffects
         public ConcurrentDictionary<long, IMyPlayer> Players { get; private set; } = new ConcurrentDictionary<long, IMyPlayer>();
 
         private bool inicialLoadComplete = false;
+        private bool sessionReady = false;
 
         protected override void DoInit(MyObjectBuilder_SessionComponent sessionComponent)
         {
             Instance = this;
-            if (MyAPIGateway.Session.IsServer)
+        }
+
+        public override void BeforeStart()
+        {
+            base.BeforeStart();
+            if (IsServer)
             {
-                if (IsServer)
-                {
-                    RegisterWatcher();
-                }
+                RegisterWatcher();
             }
         }
 
@@ -42,22 +47,38 @@ namespace AdvancedStatsAndEffects
             {
                 Players?.Clear();
                 Players = null;
+                PlayerCharacters.Clear();
+                PlayerCharacters = null;
+                BotCharacters.Clear();
+                BotCharacters = null;
                 MyVisualScriptLogicProvider.PlayerConnected -= Players_PlayerConnected;
                 MyVisualScriptLogicProvider.PlayerDisconnected -= Players_PlayerDisconnected;
                 MyEntities.OnEntityAdd -= Entities_OnEntityAdd;
                 MyEntities.OnEntityRemove -= Entities_OnEntityRemove;
+                MyAPIGateway.Session.OnSessionReady -= Session_OnSessionReady;
             }
             base.UnloadData();
         }
 
         public void Players_PlayerConnected(long playerId)
         {
+            MyAPIGateway.Parallel.Start(() => {
+                MyAPIGateway.Parallel.Sleep(1000);
+
+                var tempPlayers = new List<IMyPlayer>();
+                MyAPIGateway.Players.GetPlayers(tempPlayers, (x) => x.Identity.IdentityId == playerId);
+                if (tempPlayers.Count > 0)
+                {
+                    DoProcessPlayerList(tempPlayers);
+                }
+            });
             UpdatePlayerList();
         }
 
         public void Players_PlayerDisconnected(long playerId)
         {
-            UpdatePlayerList();
+            if (Players.ContainsKey(playerId))
+                Players.Remove(playerId);
         }
 
         public PlayerCharacterBodyController GetPlayerCharacterBySteamId(ulong steamId)
@@ -86,19 +107,28 @@ namespace AdvancedStatsAndEffects
             Players.Clear();
             var tempPlayers = new List<IMyPlayer>();
             MyAPIGateway.Players.GetPlayers(tempPlayers);
+            DoProcessPlayerList(tempPlayers);
+        }
 
+        private void DoProcessPlayerList(List<IMyPlayer> tempPlayers)
+        {
             foreach (var p in tempPlayers)
             {
                 if (p?.Character == null || p.Character.IsDead)
                     continue;
 
                 if (p.IsValidPlayer())
+                {
                     Players[p.IdentityId] = p;
+                    DoAddPlayerCharacter(p.IdentityId, p.Character);
+                }
             }
         }
 
         public void RegisterWatcher()
         {
+
+            MyAPIGateway.Session.OnSessionReady += Session_OnSessionReady;
 
             foreach (var entity in MyEntities.GetEntities())
             {
@@ -106,14 +136,20 @@ namespace AdvancedStatsAndEffects
             }
             inicialLoadComplete = true;
 
+            MyEntities.OnEntityAdd += Entities_OnEntityAdd;
+            MyEntities.OnEntityRemove += Entities_OnEntityRemove;
+
             UpdatePlayerList();
 
             MyVisualScriptLogicProvider.PlayerConnected += Players_PlayerConnected;
             MyVisualScriptLogicProvider.PlayerDisconnected += Players_PlayerDisconnected;
 
-            MyEntities.OnEntityAdd += Entities_OnEntityAdd;
-            MyEntities.OnEntityRemove += Entities_OnEntityRemove;
+        }
 
+        private void Session_OnSessionReady()
+        {
+            sessionReady = true;
+            MyAPIGateway.Session.OnSessionReady -= Session_OnSessionReady;
         }
 
         private void Entities_OnEntityRemove(MyEntity entity)
@@ -126,63 +162,74 @@ namespace AdvancedStatsAndEffects
             }
         }
 
-        private void Entities_OnEntityAdd(MyEntity entity)
+        private bool DoAddPlayerCharacter(long playerId, IMyCharacter character)
         {
-            var character = entity as IMyCharacter;
-            if (character != null)
+            if (character != null && character.IsValidPlayer())
             {
-                var playerId = character.GetPlayerId();
-                if (character.IsValidPlayer())
+                if (AdvancedStatsAndEffectsSettings.Instance.Debug)
                 {
-                    UpdatePlayerList();
                     AdvancedStatsAndEffectsLogging.Instance.LogInfo(typeof(AdvancedStatsAndEffectsEntityManager), $"MyEntities_OnEntityAddWatcher IMyCharacter PlayerId:{playerId} EntityId:{character.EntityId} DisplayName:{character.DisplayName}");
-                    if (PlayerCharacters.Any(x => x.Value.PlayerId == playerId))
+                }
+                if (PlayerCharacters.Any(x => x.Value.PlayerId == playerId))
+                {
+                    var playerChar = PlayerCharacters.FirstOrDefault(x => x.Value.PlayerId == playerId).Value;
+                    var newChar = playerChar.Entity.EntityId != character.EntityId;
+                    playerChar.ConfigureCharacter(character);
+                    if (newChar)
                     {
-                        var playerChar = PlayerCharacters.FirstOrDefault(x => x.Value.PlayerId == playerId).Value;
-                        var newChar = playerChar.Entity.EntityId != character.EntityId;
-                        playerChar.ConfigureCharacter(character);
-                        if (newChar)
-                        {
-                            foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
-                            {
-                                if (playerRespawn.Action != null)
-                                {
-                                    playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), false);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        bool newPod = false;
-                        PlayerCharacters[character.EntityId] = new PlayerCharacterBodyController(character);
-                        var steamId = PlayerCharacters[character.EntityId].Player?.SteamUserId;
-                        if (steamId.HasValue)
-                        {
-                            var data = AdvancedStatsAndEffectsStorage.Instance.GetPlayerData(steamId.Value);
-                            if (data != null)
-                                PlayerCharacters[character.EntityId].LoadStoreData(data);
-                            else
-                                PlayerCharacters[character.EntityId].ResetCharacterStats();
-                        }
-                        else
-                        {
-                            newPod = true;
-                        }
                         foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
                         {
                             if (playerRespawn.Action != null)
                             {
-                                playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), newPod);
+                                playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), false);
                             }
                         }
                     }
                 }
                 else
                 {
+                    bool newPod = false;
+                    PlayerCharacters[character.EntityId] = new PlayerCharacterBodyController(character);
+                    var steamId = PlayerCharacters[character.EntityId].Player?.SteamUserId;
+                    if (steamId.HasValue)
+                    {
+                        var data = AdvancedStatsAndEffectsStorage.Instance.GetPlayerData(steamId.Value);
+                        if (data != null)
+                            PlayerCharacters[character.EntityId].LoadStoreData(data);
+                        else
+                            PlayerCharacters[character.EntityId].ResetCharacterStats();
+                    }
+                    else
+                    {
+                        newPod = true;
+                    }
+                    foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
+                    {
+                        if (playerRespawn.Action != null)
+                        {
+                            playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), newPod);
+                        }
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private void Entities_OnEntityAdd(MyEntity entity)
+        {
+            var character = entity as IMyCharacter;
+            if (character != null)
+            {
+                var playerId = character.GetPlayerId();
+                if (!DoAddPlayerCharacter(playerId, character))                
+                {
                     if (!BotCharacters.ContainsKey(character.EntityId))
                     {
-                        AdvancedStatsAndEffectsLogging.Instance.LogInfo(typeof(AdvancedStatsAndEffectsEntityManager), $"MyEntities_OnEntityAddWatcher IMyCharacter BotId:{playerId} EntityId:{character.EntityId} DisplayName:{character.Name}");
+                        if (AdvancedStatsAndEffectsSettings.Instance.Debug)
+                        {
+                            AdvancedStatsAndEffectsLogging.Instance.LogInfo(typeof(AdvancedStatsAndEffectsEntityManager), $"MyEntities_OnEntityAddWatcher IMyCharacter BotId:{playerId} EntityId:{character.EntityId} DisplayName:{character.Name}");
+                        }
                         BotCharacters[character.EntityId] = new BotCharacterBodyController(character);
                         foreach (var afterBotAdd in AdvancedStatsAndEffectsSession.Static.AfterBotAdd)
                         {
@@ -190,6 +237,41 @@ namespace AdvancedStatsAndEffects
                             {
                                 afterBotAdd.Action(character.EntityId, character);
                             }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var cubeGrid = entity as IMyCubeGrid;
+                if (cubeGrid != null)
+                {
+                    if (!sessionReady)
+                    {
+                        var result = new List<IMySlimBlock>();
+                        cubeGrid.GetBlocks(result, x => x.FatBlock as IMyCockpit != null);
+                        foreach (var block in result)
+                        {
+                            var cryoBlock = block.FatBlock as IMyCockpit;
+                            if (cryoBlock != null && cryoBlock.Pilot != null)
+                            {
+                                var playerId = cryoBlock.Pilot.GetPlayerId();
+                                DoAddPlayerCharacter(playerId, cryoBlock.Pilot);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (cubeGrid.IsRespawnGrid)
+                        {
+                            var playerId = cubeGrid.BigOwners.FirstOrDefault();
+                            MyAPIGateway.Parallel.Start(() => {
+                                MyAPIGateway.Parallel.Sleep(1000);
+                                if (Players.ContainsKey(playerId))
+                                {
+                                    DoAddPlayerCharacter(playerId, Players[playerId].Character);
+                                }
+                            });
                         }
                     }
                 }

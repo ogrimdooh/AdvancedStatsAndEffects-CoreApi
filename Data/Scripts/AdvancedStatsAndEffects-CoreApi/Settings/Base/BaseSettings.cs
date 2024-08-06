@@ -15,6 +15,9 @@ namespace AdvancedStatsAndEffects
         [XmlElement]
         public int Version { get; set; }
 
+        [XmlElement]
+        public bool Debug { get; set; } = false;
+
         protected static T Load<T>(string fileName, int currentVersion, BaseSettings_Validade<T> validade, BaseSettings_Create<T> create) where T : BaseSettings
         {
             var world = true;
