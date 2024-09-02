@@ -72,7 +72,6 @@ namespace AdvancedStatsAndEffects
                     DoProcessPlayerList(tempPlayers);
                 }
             });
-            UpdatePlayerList();
         }
 
         public void Players_PlayerDisconnected(long playerId)
