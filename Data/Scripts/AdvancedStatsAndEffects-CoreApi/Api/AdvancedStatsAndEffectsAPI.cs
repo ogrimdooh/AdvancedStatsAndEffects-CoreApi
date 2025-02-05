@@ -398,6 +398,7 @@ namespace AdvancedStatsAndEffects
         private static Func<long, string, long> _GetPlayerFixedStatRemainTime;
         private static Func<long, string, long, bool> _SetPlayerFixedStatRemainTime;
         private static Func<long, int> _GetPlayerFixedStatUpdateHash;
+        private static Func<long, bool> _DoResetCharacterStats;
 
         /// <summary>
         /// Returns true if the version is compatibile with the API Backend, this is automatically called
@@ -405,6 +406,14 @@ namespace AdvancedStatsAndEffects
         public static bool VerifyVersion(int Version, string ModName)
         {
             return _VerifyVersion?.Invoke(Version, ModName) ?? false;
+        }
+
+        /// <summary>
+        /// Returns true if player exits and reset was executed
+        /// </summary>
+        public static bool DoResetCharacterStats(long playerId)
+        {
+            return _DoResetCharacterStats?.Invoke(playerId) ?? false;
         }
 
         /// <summary>
@@ -783,6 +792,7 @@ namespace AdvancedStatsAndEffects
                         _GetPlayerFixedStatRemainTime = (Func<long, string, long>)ModAPIMethods["GetPlayerFixedStatRemainTime"];
                         _SetPlayerFixedStatRemainTime = (Func<long, string, long, bool>)ModAPIMethods["SetPlayerFixedStatRemainTime"];
                         _GetPlayerFixedStatUpdateHash = (Func<long, int>)ModAPIMethods["GetPlayerFixedStatUpdateHash"];
+                        _DoResetCharacterStats = (Func<long, bool>)ModAPIMethods["DoResetCharacterStats"];
 
                         if (m_onRegisteredAction != null)
                             m_onRegisteredAction();

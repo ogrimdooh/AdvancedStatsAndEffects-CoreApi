@@ -63,7 +63,8 @@ namespace AdvancedStatsAndEffects
             ["GetPlayerFixedStatStack"] = new Func<long, string, byte>(GetPlayerFixedStatStack),
             ["GetPlayerFixedStatRemainTime"] = new Func<long, string, long>(GetPlayerFixedStatRemainTime),
             ["SetPlayerFixedStatRemainTime"] = new Func<long, string, long, bool>(SetPlayerFixedStatRemainTime),
-            ["GetPlayerFixedStatUpdateHash"] = new Func<long, int>(GetPlayerFixedStatUpdateHash)
+            ["GetPlayerFixedStatUpdateHash"] = new Func<long, int>(GetPlayerFixedStatUpdateHash),
+            ["DoResetCharacterStats"] = new Func<long, bool>(DoResetCharacterStats)
         };
 
         public static void BeforeStart()
@@ -141,6 +142,20 @@ namespace AdvancedStatsAndEffects
             if (AdvancedStatsAndEffectsTimeManager.Instance != null)
                 return AdvancedStatsAndEffectsTimeManager.Instance.GameTime;
             return 0;
+        }
+
+        public static bool DoResetCharacterStats(long playerId)
+        {
+            if (AdvancedStatsAndEffectsEntityManager.Instance != null)
+            {
+                var pChar = AdvancedStatsAndEffectsEntityManager.Instance.GetPlayerCharacter(playerId);
+                if (pChar != null)
+                {
+                    pChar.ResetCharacterStats();
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static bool DoPlayerConsume(long playerId, MyDefinitionId consumableId)

@@ -119,7 +119,7 @@ namespace AdvancedStatsAndEffects
                 if (p.IsValidPlayer())
                 {
                     Players[p.IdentityId] = p;
-                    DoAddPlayerCharacter(p.IdentityId, p.Character);
+                    DoAddPlayerCharacter(p.IdentityId, p.Character, false, 0);
                 }
             }
         }
@@ -161,7 +161,7 @@ namespace AdvancedStatsAndEffects
             }
         }
 
-        private bool DoAddPlayerCharacter(long playerId, IMyCharacter character)
+        private bool DoAddPlayerCharacter(long playerId, IMyCharacter character, bool newPod, long podId)
         {
             if (character != null && character.IsValidPlayer())
             {
@@ -171,23 +171,40 @@ namespace AdvancedStatsAndEffects
                 }
                 if (PlayerCharacters.Any(x => x.Value.PlayerId == playerId))
                 {
-                    var playerChar = PlayerCharacters.FirstOrDefault(x => x.Value.PlayerId == playerId).Value;
+                    var playerData = PlayerCharacters.FirstOrDefault(x => x.Value.PlayerId == playerId);
+                    var playerChar = playerData.Value;
                     var newChar = playerChar.Entity.EntityId != character.EntityId;
                     playerChar.ConfigureCharacter(character);
                     if (newChar)
                     {
+                        PlayerCharacters.Remove(playerData.Key);
+                        PlayerCharacters[character.EntityId] = playerChar;
+                    }
+                    if (newChar || newPod)
+                    {
+                        if (newPod && AdvancedStatsAndEffectsSession.Static.PlayerRespawn.Any() && playerChar.Player != null)
+                        {
+                            foreach (var gridId in playerChar.Player.Grids)
+                            {
+                                var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
+                                if (grid != null && grid.BlocksCount > 1 && grid.EntityId != podId)
+                                {
+                                    newPod = false;
+                                    break;
+                                }
+                            }
+                        }
                         foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
                         {
                             if (playerRespawn.Action != null)
                             {
-                                playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), false);
+                                playerRespawn.Action(playerId, character, character.Components.Get<MyCharacterStatComponent>(), newPod);
                             }
                         }
                     }
                 }
                 else
                 {
-                    bool newPod = false;
                     PlayerCharacters[character.EntityId] = new PlayerCharacterBodyController(character);
                     var steamId = PlayerCharacters[character.EntityId].Player?.SteamUserId;
                     if (steamId.HasValue)
@@ -200,7 +217,19 @@ namespace AdvancedStatsAndEffects
                     }
                     else
                     {
-                        newPod = true;
+                        PlayerCharacters[character.EntityId].ResetCharacterStats();
+                    }
+                    if (newPod && AdvancedStatsAndEffectsSession.Static.PlayerRespawn.Any() && PlayerCharacters[character.EntityId].Player != null)
+                    {
+                        foreach (var gridId in PlayerCharacters[character.EntityId].Player.Grids)
+                        {
+                            var grid = MyAPIGateway.Entities.GetEntityById(gridId) as MyCubeGrid;
+                            if (grid != null && grid.BlocksCount > 1 && grid.EntityId != podId)
+                            {
+                                newPod = false;
+                                break;
+                            }
+                        }
                     }
                     foreach (var playerRespawn in AdvancedStatsAndEffectsSession.Static.PlayerRespawn)
                     {
@@ -221,7 +250,7 @@ namespace AdvancedStatsAndEffects
             if (character != null)
             {
                 var playerId = character.GetPlayerId();
-                if (!DoAddPlayerCharacter(playerId, character))                
+                if (!DoAddPlayerCharacter(playerId, character, false, 0))                
                 {
                     if (!BotCharacters.ContainsKey(character.EntityId))
                     {
@@ -255,7 +284,7 @@ namespace AdvancedStatsAndEffects
                             if (cryoBlock != null && cryoBlock.Pilot != null)
                             {
                                 var playerId = cryoBlock.Pilot.GetPlayerId();
-                                DoAddPlayerCharacter(playerId, cryoBlock.Pilot);
+                                DoAddPlayerCharacter(playerId, cryoBlock.Pilot, false, 0);
                             }
                         }
                     }
@@ -268,7 +297,7 @@ namespace AdvancedStatsAndEffects
                                 MyAPIGateway.Parallel.Sleep(1000);
                                 if (Players.ContainsKey(playerId))
                                 {
-                                    DoAddPlayerCharacter(playerId, Players[playerId].Character);
+                                    DoAddPlayerCharacter(playerId, Players[playerId].Character, true, cubeGrid.EntityId);
                                 }
                             });
                         }
