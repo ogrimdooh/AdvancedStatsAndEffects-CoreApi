@@ -163,12 +163,12 @@ namespace AdvancedStatsAndEffects
 
         private bool DoAddPlayerCharacter(long playerId, IMyCharacter character, bool newPod, long podId)
         {
+            if (AdvancedStatsAndEffectsSettings.Instance.Debug)
+            {
+                AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"DoAddPlayerCharacter : playerId={playerId} newPod={newPod} podId={podId}");
+            }
             if (character != null && character.IsValidPlayer())
             {
-                if (AdvancedStatsAndEffectsSettings.Instance.Debug)
-                {
-                    AdvancedStatsAndEffectsLogging.Instance.LogInfo(typeof(AdvancedStatsAndEffectsEntityManager), $"MyEntities_OnEntityAddWatcher IMyCharacter PlayerId:{playerId} EntityId:{character.EntityId} DisplayName:{character.DisplayName}");
-                }
                 if (PlayerCharacters.Any(x => x.Value.PlayerId == playerId))
                 {
                     var playerData = PlayerCharacters.FirstOrDefault(x => x.Value.PlayerId == playerId);
@@ -255,10 +255,6 @@ namespace AdvancedStatsAndEffects
                 {
                     if (!BotCharacters.ContainsKey(character.EntityId))
                     {
-                        if (AdvancedStatsAndEffectsSettings.Instance.Debug)
-                        {
-                            AdvancedStatsAndEffectsLogging.Instance.LogInfo(typeof(AdvancedStatsAndEffectsEntityManager), $"MyEntities_OnEntityAddWatcher IMyCharacter BotId:{playerId} EntityId:{character.EntityId} DisplayName:{character.Name}");
-                        }
                         BotCharacters[character.EntityId] = new BotCharacterBodyController(character);
                         foreach (var afterBotAdd in AdvancedStatsAndEffectsSession.Static.AfterBotAdd)
                         {
@@ -294,9 +290,31 @@ namespace AdvancedStatsAndEffects
                         if (cubeGrid.IsRespawnGrid)
                         {
                             var playerId = cubeGrid.BigOwners.FirstOrDefault();
+                            if (AdvancedStatsAndEffectsSettings.Instance.Debug)
+                            {
+                                AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Entities_OnEntityAdd : GridId={cubeGrid.EntityId} PlayerId={playerId} IsRespawnGrid=true");
+                            }
                             MyAPIGateway.Parallel.Start(() => {
                                 MyAPIGateway.Parallel.Sleep(1000);
-                                if (Players.ContainsKey(playerId))
+                                var hasPlayer = Players.ContainsKey(playerId);
+                                if (AdvancedStatsAndEffectsSettings.Instance.Debug)
+                                {
+                                    AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Entities_OnEntityAdd [Parallel] : BEFORE DoAddPlayerCharacter PlayerId={playerId} hasPlayerInCache={hasPlayer}");
+                                }
+                                if (!hasPlayer)
+                                {
+                                    if (AdvancedStatsAndEffectsSettings.Instance.Debug)
+                                    {
+                                        AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Entities_OnEntityAdd : Force Player cache update!");
+                                    }
+                                    UpdatePlayerList();
+                                    hasPlayer = Players.ContainsKey(playerId);
+                                    if (AdvancedStatsAndEffectsSettings.Instance.Debug)
+                                    {
+                                        AdvancedStatsAndEffectsLogging.Instance.LogInfo(GetType(), $"Entities_OnEntityAdd : Player cache update results = {hasPlayer}!");
+                                    }
+                                }
+                                if (hasPlayer)
                                 {
                                     DoAddPlayerCharacter(playerId, Players[playerId].Character, true, cubeGrid.EntityId);
                                 }
