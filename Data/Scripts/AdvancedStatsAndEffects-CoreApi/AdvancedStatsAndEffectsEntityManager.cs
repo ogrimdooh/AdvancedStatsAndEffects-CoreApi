@@ -182,7 +182,8 @@ namespace AdvancedStatsAndEffects
                     }
                     if (newChar || newPod)
                     {
-                        if (newPod && AdvancedStatsAndEffectsSession.Static.PlayerRespawn.Any() && playerChar.Player != null)
+                        if (newPod && AdvancedStatsAndEffectsSettings.Instance.CheckOtherGridsOnResetPlayerStats && 
+                            AdvancedStatsAndEffectsSession.Static.PlayerRespawn.Any() && playerChar.Player != null)
                         {
                             foreach (var gridId in playerChar.Player.Grids)
                             {

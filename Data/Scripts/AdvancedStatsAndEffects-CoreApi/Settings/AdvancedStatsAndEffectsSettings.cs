@@ -28,7 +28,8 @@ namespace AdvancedStatsAndEffects
             }
         }
 
-
+        [XmlElement]
+        public bool CheckOtherGridsOnResetPlayerStats { get; set; } = false;
 
         private static bool Validate(AdvancedStatsAndEffectsSettings settings)
         {
@@ -79,7 +80,14 @@ namespace AdvancedStatsAndEffects
         {
             switch (name)
             {
-                
+                case "checkothergridsonresetplayerstats":
+                    bool checkothergridsonresetplayerstats;
+                    if (bool.TryParse(value, out checkothergridsonresetplayerstats))
+                    {
+                        CheckOtherGridsOnResetPlayerStats = checkothergridsonresetplayerstats;
+                        return true;
+                    }
+                    break;
             }
             return false;
         }
